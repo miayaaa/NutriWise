@@ -29,37 +29,38 @@ function formatCountdown(ms: number) {
 }
 
 export function FastingStatus({ fastingStart, fastingEnd, todayLogs }: FastingStatusProps) {
-  const [now, setNow] = React.useState(() => new Date())
+  const [now, setNow] = React.useState<Date | null>(null)
 
-  // Tick every minute
+  // Start ticking after mount to avoid SSR/client hydration mismatch.
   React.useEffect(() => {
+    setNow(new Date())
     const id = setInterval(() => setNow(new Date()), 60_000)
     return () => clearInterval(id)
   }, [])
 
-  const currentHour = now.getHours()
-  const currentMin = now.getMinutes()
-  const currentTotalMin = currentHour * 60 + currentMin
+  const currentTotalMin = now ? now.getHours() * 60 + now.getMinutes() : null
 
   const windowStartMin = fastingStart * 60
   const windowEndMin = fastingEnd * 60
 
-  const inWindow = currentTotalMin >= windowStartMin && currentTotalMin < windowEndMin
+  const inWindow = currentTotalMin !== null
+    ? currentTotalMin >= windowStartMin && currentTotalMin < windowEndMin
+    : false
 
   // Countdown
-  let countdownLabel = ""
+  let countdownLabel = "Calculating..."
   let countdownMs = 0
-  if (inWindow) {
-    // Time until window closes
+  if (currentTotalMin !== null && inWindow) {
     const minsLeft = windowEndMin - currentTotalMin
     countdownMs = minsLeft * 60_000
     countdownLabel = `Window closes in ${formatCountdown(countdownMs)}`
   } else {
-    // Time until window opens
-    let minsUntilOpen = windowStartMin - currentTotalMin
-    if (minsUntilOpen < 0) minsUntilOpen += 24 * 60
-    countdownMs = minsUntilOpen * 60_000
-    countdownLabel = `Window opens in ${formatCountdown(countdownMs)}`
+    if (currentTotalMin !== null) {
+      let minsUntilOpen = windowStartMin - currentTotalMin
+      if (minsUntilOpen < 0) minsUntilOpen += 24 * 60
+      countdownMs = minsUntilOpen * 60_000
+      countdownLabel = `Window opens in ${formatCountdown(countdownMs)}`
+    }
   }
 
   // Compliance: check if any log is outside the eating window
