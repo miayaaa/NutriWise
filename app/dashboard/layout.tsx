@@ -15,7 +15,7 @@ export default async function DashboardLayout({
   const user = await getCurrentUser()
 
   return (
-    <div className="flex min-h-screen flex-col space-y-6">
+    <div className="flex min-h-screen w-full flex-col space-y-3 overflow-x-hidden md:space-y-6">
       <Navbar
         user={{
           name: user?.name,
@@ -23,11 +23,11 @@ export default async function DashboardLayout({
           email: user?.email,
         }}
       />
-      <div className="container grid flex-1 gap-12 md:grid-cols-[200px_1fr]">
+      <div className="grid grid-cols-1 w-full flex-1 gap-6 px-0 md:grid-cols-[200px_1fr] md:px-6">
         <aside className="hidden w-[200px] flex-col md:flex">
           <DashboardNav items={dashboardLinks.data} />
         </aside>
-        <main className="flex w-full flex-1 flex-col pb-20 md:pb-0">{children}</main>
+        <main className="min-w-0 flex-1 overflow-x-hidden pb-20 md:pb-0">{children}</main>
       </div>
       <div className="hidden md:block">
         <Footer />

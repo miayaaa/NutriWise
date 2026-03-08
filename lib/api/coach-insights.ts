@@ -60,7 +60,7 @@ async function aggregateMetrics(
 ): Promise<CoachInsightMetrics> {
   const { startDate, endDate, days } = getRangeWindow(rangeType)
 
-  const [foodAgg, waterAgg, workoutAgg, user, weightLogs] = await Promise.all([
+  const [foodAgg, waterAgg, workoutLogs, user, weightLogs] = await Promise.all([
     db.foodLog.aggregate({
       where: { userId, date: { gte: startDate, lte: endDate } },
       _count: { _all: true },
@@ -71,16 +71,20 @@ async function aggregateMetrics(
       _sum: { amount: true },
       _count: { _all: true },
     }),
-    db.workoutLog.aggregate({
+    db.workoutLog.findMany({
       where: { userId, date: { gte: startDate, lte: endDate } },
-      _sum: { durationMin: true },
-      _count: { _all: true },
+      select: { type: true, durationMin: true, details: true, date: true },
+      orderBy: { date: "asc" },
     }),
     db.user.findUnique({
       where: { id: userId },
       select: {
         dailyWaterGoal: true,
         weightGoalKg: true,
+        fitnessGoal: true,
+        age: true,
+        gender: true,
+        heightCm: true,
         fastingEnabled: true,
         fastingStart: true,
         fastingEnd: true,
@@ -99,8 +103,39 @@ async function aggregateMetrics(
   const totalCarbs = toNumber(foodAgg._sum.carbs)
   const totalFat = toNumber(foodAgg._sum.fat)
   const totalWaterMl = toNumber(waterAgg._sum.amount)
-  const sessionCount = workoutAgg._count._all
-  const totalDurationMin = toNumber(workoutAgg._sum.durationMin)
+  const sessionCount = workoutLogs.length
+  const totalDurationMin = workoutLogs.reduce((s, w) => s + w.durationMin, 0)
+
+  type WorkoutDetailsJson = {
+    mode?: string
+    strength?: { exercise?: string; sets?: number; reps?: number; weightKg?: number }
+    cardio?: { cardioType?: string; distanceKm?: number; avgSpeedKph?: number }
+    other?: { workoutName?: string }
+  }
+
+  const workoutSessions = workoutLogs.map((w) => {
+    const d = (w.details ?? {}) as WorkoutDetailsJson
+    if (d.mode === "strength" && d.strength) {
+      return {
+        type: "Strength",
+        durationMin: w.durationMin,
+        exercise: d.strength.exercise ?? "Unknown",
+        sets: d.strength.sets,
+        reps: d.strength.reps,
+        weightKg: d.strength.weightKg,
+      }
+    }
+    if (d.mode === "cardio" && d.cardio) {
+      return {
+        type: "Cardio",
+        durationMin: w.durationMin,
+        cardioType: d.cardio.cardioType ?? "Cardio",
+        distanceKm: d.cardio.distanceKm,
+        avgSpeedKph: d.cardio.avgSpeedKph,
+      }
+    }
+    return { type: w.type, durationMin: w.durationMin }
+  })
   const weightCount = weightLogs.length
   const currentWeightKg = weightCount > 0 ? weightLogs[weightCount - 1].weightKg : null
   const avgWeightKg = weightCount > 0
@@ -134,7 +169,9 @@ async function aggregateMetrics(
       sessionCount,
       totalDurationMin,
       avgDurationMin: sessionCount > 0 ? Math.round(totalDurationMin / sessionCount) : 0,
+      sessions: workoutSessions,
     },
+    fitnessGoal: (user?.fitnessGoal ?? null) as string | null,
     weight: {
       logCount: weightCount,
       currentKg: currentWeightKg,

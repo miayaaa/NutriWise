@@ -1,27 +1,20 @@
 import { Metadata } from "next"
 import { redirect } from "next/navigation"
 
-import { getCoachInsight } from "@/lib/api/coach-insights"
 import { getTodayFoodLogs } from "@/lib/api/dashboard"
-import { getFoodHistory } from "@/lib/api/history"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { getCurrentUser } from "@/lib/session"
 import { Shell } from "@/components/layout/shell"
-import { CoachInsightsCard } from "@/components/pages/dashboard/coach-insights-card"
-import { DashboardHeader } from "@/components/pages/dashboard/dashboard-header"
 import { FastingStatus } from "@/components/pages/dashboard/fasting-status"
-import { FoodHistoryView } from "@/components/pages/dashboard/food-history-view"
-import { QuickFoodLog } from "@/components/pages/dashboard/quick-food-log"
+import { QuickLogCard } from "@/components/pages/dashboard/quick-log-card"
 import { TodayIntake } from "@/components/pages/dashboard/today-intake"
 import { TodayWorkouts } from "@/components/pages/dashboard/today-workouts"
 import { WaterProgress } from "@/components/pages/dashboard/water-progress"
 import { WeightTracker } from "@/components/pages/dashboard/weight-tracker"
-import { WorkoutLogLauncher } from "@/components/pages/dashboard/workout-log-launcher"
 
 export const metadata: Metadata = {
   title: "Dashboard",
-  description: "Monitor your progress.",
 }
 
 export default async function Dashboard() {
@@ -37,7 +30,7 @@ export default async function Dashboard() {
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 89)
   ninetyDaysAgo.setHours(0, 0, 0, 0)
 
-  const [todayMeals, dbUser, history, todayWater, todayWorkouts, coachInsight, weightLogs] = await Promise.all([
+  const [todayMeals, dbUser, todayWater, weightLogs, todayWorkouts] = await Promise.all([
     getTodayFoodLogs(user.id),
     db.user.findUnique({
       where: { id: user.id },
@@ -50,10 +43,14 @@ export default async function Dashboard() {
         fastingEnd: true,
       },
     }),
-    getFoodHistory(user.id),
     db.waterLog.findMany({
       where: { userId: user.id, date: { gte: today, lte: todayEnd } },
       select: { id: true, amount: true, date: true },
+      orderBy: { date: "asc" },
+    }),
+    db.weightLog.findMany({
+      where: { userId: user.id, date: { gte: ninetyDaysAgo } },
+      select: { id: true, weightKg: true, date: true },
       orderBy: { date: "asc" },
     }),
     db.workoutLog.findMany({
@@ -61,22 +58,12 @@ export default async function Dashboard() {
       select: { id: true, type: true, durationMin: true, details: true, notes: true, aiComment: true },
       orderBy: { date: "asc" },
     }),
-    getCoachInsight(user.id, "7d"),
-    db.weightLog.findMany({
-      where: { userId: user.id, date: { gte: ninetyDaysAgo } },
-      select: { id: true, weightKg: true, date: true },
-      orderBy: { date: "asc" },
-    }),
   ])
 
   return (
-    <Shell>
-      <DashboardHeader heading="Dashboard" text="Monitor your progress." />
-
-      {/* Quick food logger — hidden on mobile (use FAB instead) */}
-      <div className="hidden md:block">
-        <QuickFoodLog />
-      </div>
+    <Shell className="w-full px-4 md:px-0">
+      {/* Quick log — food / water / workout dialogs */}
+      <QuickLogCard />
 
       {/* Fasting status */}
       {dbUser?.fastingEnabled && (
@@ -87,24 +74,12 @@ export default async function Dashboard() {
         />
       )}
 
-      <div className="hidden md:block rounded-xl border bg-card p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <h3 className="text-base font-semibold">Workout Tracker</h3>
-            <p className="text-sm text-muted-foreground">
-              Log strength sets and weight, cardio incline/elevation, or any custom workout.
-            </p>
-          </div>
-          <WorkoutLogLauncher />
-        </div>
-      </div>
-
-      {/* Today's workouts */}
-      <TodayWorkouts workouts={todayWorkouts} />
-
-      {/* Today summary — 3 cards on md+ */}
+      {/* Today summary — 3 cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <TodayIntake meals={todayMeals} dailyCalorieGoal={dbUser?.dailyCalorieGoal} />
+        <TodayIntake
+          meals={todayMeals.map((m) => ({ ...m, date: m.date.toISOString() }))}
+          dailyCalorieGoal={dbUser?.dailyCalorieGoal}
+        />
         <WaterProgress
           initialLogs={todayWater.map((l) => ({ ...l, date: l.date.toISOString() }))}
           dailyGoal={dbUser?.dailyWaterGoal ?? 2000}
@@ -113,16 +88,7 @@ export default async function Dashboard() {
           initialLogs={weightLogs.map((l) => ({ ...l, date: l.date.toISOString() }))}
           weightGoalKg={dbUser?.weightGoalKg ?? null}
         />
-      </div>
-
-      <CoachInsightsCard initialInsight={coachInsight} />
-
-      {/* 30-day food history */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Recent History
-        </h3>
-        <FoodHistoryView history={history} />
+        <TodayWorkouts workouts={todayWorkouts} />
       </div>
     </Shell>
   )

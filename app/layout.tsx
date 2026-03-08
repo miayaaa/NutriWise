@@ -1,7 +1,7 @@
 import "./globals.css"
 
 import { Metadata, Viewport } from "next"
-import { Inter } from "next/font/google"
+import { Inter, Barlow_Condensed } from "next/font/google"
 import NextTopLoader from "nextjs-toploader"
 
 import { siteConfig } from "@/config/site"
@@ -10,6 +10,12 @@ import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "@/components/theme-provider"
 
 const inter = Inter({ subsets: ["latin"] })
+
+const barlowCondensed = Barlow_Condensed({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-brand",
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url.base),
@@ -58,6 +64,8 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "white" },
     { media: "(prefers-color-scheme: dark)", color: "black" },
@@ -71,12 +79,12 @@ interface RootLayoutProps {
 export default async function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn("antialiased", inter.className)}>
+      <body className={cn("antialiased overflow-x-hidden w-full", inter.className, barlowCondensed.variable)}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <NextTopLoader color="#22c55e" height={2.5} showSpinner={false} />
           <div
             vaul-drawer-wrapper=""
-            className="flex min-h-screen flex-col bg-background"
+            className="flex min-h-screen w-full flex-col overflow-x-hidden bg-background"
           >
             {children}
           </div>

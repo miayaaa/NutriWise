@@ -6,25 +6,32 @@ import { db } from "@/lib/db"
 import { getCurrentUser } from "@/lib/session"
 import { Shell } from "@/components/layout/shell"
 import { DashboardHeader } from "@/components/pages/dashboard/dashboard-header"
-import { AppearanceForm } from "@/components/settings/appearance-form"
 import { SignOutButton } from "@/components/user/sign-out-button"
 import { UserBodyMetricsForm } from "@/components/user/user-body-metrics-form"
-import { UserCalorieGoalForm } from "@/components/user/user-calorie-goal-form"
+import { UserDailyGoalsForm } from "@/components/user/user-daily-goals-form"
 import { UserFastingForm } from "@/components/user/user-fasting-form"
+import { UserFitnessGoalForm } from "@/components/user/user-fitness-goal-form"
 import { UserNameForm } from "@/components/user/user-name-form"
-import { UserWaterGoalForm } from "@/components/user/user-water-goal-form"
 
 export const metadata: Metadata = {
   title: "Settings",
   description: "Manage account and app settings.",
 }
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 pt-2">
+      <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        {children}
+      </span>
+      <div className="flex-1 border-t" />
+    </div>
+  )
+}
+
 export default async function SettingsPage() {
   const user = await getCurrentUser()
-
-  if (!user) {
-    redirect(authOptions?.pages?.signIn || "/signin")
-  }
+  if (!user) redirect(authOptions?.pages?.signIn || "/signin")
 
   const dbUser = await db.user.findUnique({
     where: { id: user.id },
@@ -33,6 +40,9 @@ export default async function SettingsPage() {
       dailyWaterGoal: true,
       heightCm: true,
       weightGoalKg: true,
+      fitnessGoal: true,
+      age: true,
+      gender: true,
       fastingEnabled: true,
       fastingStart: true,
       fastingEnd: true,
@@ -41,25 +51,41 @@ export default async function SettingsPage() {
 
   return (
     <Shell>
-      <DashboardHeader
-        heading="Settings"
-        text="Manage account and app settings."
-      />
-      <div className="grid grid-cols-1 gap-6">
+      <DashboardHeader heading="Settings" text="Manage account and app settings." />
+
+      <div className="grid grid-cols-1 gap-4">
+
+        {/* ── Profile ─────────────────────────────── */}
+        <SectionLabel>Profile</SectionLabel>
         <UserNameForm user={{ id: user.id, name: user.name || "" }} />
-        <UserCalorieGoalForm
-          user={{ id: user.id, dailyCalorieGoal: dbUser?.dailyCalorieGoal }}
+        <UserFitnessGoalForm
+          user={{ id: user.id, fitnessGoal: (dbUser?.fitnessGoal as any) ?? null }}
         />
-        <UserWaterGoalForm
-          user={{ id: user.id, dailyWaterGoal: dbUser?.dailyWaterGoal ?? 2000 }}
+
+        {/* ── Goals ───────────────────────────────── */}
+        <SectionLabel>Goals</SectionLabel>
+        <UserDailyGoalsForm
+          user={{
+            id: user.id,
+            dailyCalorieGoal: dbUser?.dailyCalorieGoal,
+            dailyWaterGoal: dbUser?.dailyWaterGoal ?? 2000,
+          }}
         />
+
+        {/* ── Body ────────────────────────────────── */}
+        <SectionLabel>Body</SectionLabel>
         <UserBodyMetricsForm
           user={{
             id: user.id,
             heightCm: dbUser?.heightCm ?? null,
             weightGoalKg: dbUser?.weightGoalKg ?? null,
+            age: dbUser?.age ?? null,
+            gender: dbUser?.gender ?? null,
           }}
         />
+
+        {/* ── Lifestyle ───────────────────────────── */}
+        <SectionLabel>Lifestyle</SectionLabel>
         <UserFastingForm
           user={{
             id: user.id,
@@ -68,8 +94,11 @@ export default async function SettingsPage() {
             fastingEnd: dbUser?.fastingEnd ?? 20,
           }}
         />
-        <AppearanceForm />
+
+        {/* ── Account ─────────────────────────────── */}
+        <SectionLabel>Account</SectionLabel>
         <SignOutButton />
+
       </div>
     </Shell>
   )

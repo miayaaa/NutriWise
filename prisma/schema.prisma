@@ -49,6 +49,9 @@ model User {
   dailyWaterGoal   Int       @default(2000) @map(name: "daily_water_goal")
   heightCm         Int?      @map(name: "height_cm")
   weightGoalKg     Float?    @map(name: "weight_goal_kg")
+  fitnessGoal      String?   @map(name: "fitness_goal")
+  age              Int?
+  gender           String?
   fastingEnabled   Boolean   @default(false) @map(name: "fasting_enabled")
   fastingStart     Int       @default(12) @map(name: "fasting_start")
   fastingEnd       Int       @default(20) @map(name: "fasting_end")

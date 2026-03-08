@@ -21,4 +21,13 @@ export const userFastingSchema = z.object({
 export const userBodyMetricsSchema = z.object({
   heightCm: z.number().int().min(80).max(260).nullable().optional(),
   weightGoalKg: z.number().min(25).max(350).nullable().optional(),
+  age: z.number().int().min(10).max(120).nullable().optional(),
+  gender: z.enum(["male", "female", "other"]).nullable().optional(),
+})
+
+export const FITNESS_GOALS = ["fat_loss", "muscle_gain", "body_recomposition", "maintenance"] as const
+export type FitnessGoal = (typeof FITNESS_GOALS)[number]
+
+export const userFitnessGoalSchema = z.object({
+  fitnessGoal: z.enum(FITNESS_GOALS).nullable(),
 })

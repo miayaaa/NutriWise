@@ -112,6 +112,7 @@ export function WeightTracker({ initialLogs, weightGoalKg }: WeightTrackerProps)
         <div className="flex items-center gap-2">
           <Input
             type="number"
+            inputMode="decimal"
             min={25}
             max={350}
             step="0.1"
