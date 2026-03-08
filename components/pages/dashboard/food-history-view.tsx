@@ -68,7 +68,7 @@ export function FoodHistoryView({ history }: { history: HistoryData }) {
                 const meta = MEAL_META[type]
                 return (
                   <div key={type} className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                       {meta.emoji} {meta.label}
                     </p>
                     {group.map((m) => (

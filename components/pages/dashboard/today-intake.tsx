@@ -81,7 +81,7 @@ export function TodayIntake({ meals, dailyCalorieGoal }: TodayIntakeProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Today&apos;s Intake</CardTitle>
+        <CardTitle className="text-base font-medium">Today&apos;s Intake</CardTitle>
         <Icons.activity className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent className="space-y-4">
@@ -132,7 +132,7 @@ export function TodayIntake({ meals, dailyCalorieGoal }: TodayIntakeProps) {
               return (
                 <div key={type} className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                       {meta.emoji} {meta.label}
                     </span>
                     {groupKcal > 0 && (

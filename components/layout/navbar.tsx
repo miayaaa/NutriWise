@@ -48,14 +48,18 @@ export default function Navbar({ user }: NavbarProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <ModeToggle />
-          <UserNavDisplay
-            user={{
-              name: user?.name,
-              image: user?.image,
-              email: user?.email,
-            }}
-          />
+          <div className="hidden md:block">
+            <ModeToggle />
+          </div>
+          <div className="hidden md:block">
+            <UserNavDisplay
+              user={{
+                name: user?.name,
+                image: user?.image,
+                email: user?.email,
+              }}
+            />
+          </div>
         </div>
       </nav>
     </header>

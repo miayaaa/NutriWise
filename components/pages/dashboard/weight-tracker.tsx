@@ -77,7 +77,7 @@ export function WeightTracker({ initialLogs, weightGoalKg }: WeightTrackerProps)
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Weight Tracker</CardTitle>
+        <CardTitle className="text-base font-medium">Weight Tracker</CardTitle>
         <div className="flex gap-1 rounded-full bg-muted p-1">
           {[7, 30].map((d) => (
             <button

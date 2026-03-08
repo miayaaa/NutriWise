@@ -16,8 +16,73 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer"
+import { toast } from "@/components/ui/use-toast"
 import { QuickFoodLog } from "@/components/pages/dashboard/quick-food-log"
 import { WorkoutLogForm } from "@/components/pages/dashboard/workout-log-form"
+
+const WATER_AMOUNTS = [200, 300, 500, 750]
+
+function WaterQuickLog({ onSuccess }: { onSuccess: () => void }) {
+  const [isAdding, setIsAdding] = React.useState(false)
+  const [custom, setCustom] = React.useState("")
+
+  async function addWater(amount: number) {
+    if (isAdding || amount <= 0) return
+    setIsAdding(true)
+    try {
+      const res = await fetch("/api/water-logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount }),
+      })
+      if (res.ok) {
+        toast({ description: `+${amount}ml logged.` })
+        onSuccess()
+      }
+    } catch {
+      toast({ title: "Error", description: "Could not log water.", variant: "destructive" })
+    } finally {
+      setIsAdding(false)
+    }
+  }
+
+  return (
+    <div className="px-4 pb-8 space-y-4">
+      <div className="grid grid-cols-4 gap-2">
+        {WATER_AMOUNTS.map((amt) => (
+          <button
+            key={amt}
+            onClick={() => addWater(amt)}
+            disabled={isAdding}
+            className="flex flex-col items-center justify-center rounded-xl border border-border bg-muted/40 py-3 text-sm font-medium transition-colors hover:border-blue-400 hover:text-blue-500 disabled:opacity-50"
+          >
+            <BsDropletFill className="mb-1 h-4 w-4 text-blue-400" />
+            {amt}ml
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input
+          type="number"
+          value={custom}
+          onChange={(e) => setCustom(e.target.value)}
+          placeholder="Custom ml"
+          min={1}
+          max={2000}
+          className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+          onKeyDown={(e) => { if (e.key === "Enter") addWater(Number(custom)) }}
+        />
+        <button
+          onClick={() => addWater(Number(custom))}
+          disabled={isAdding || !custom}
+          className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  )
+}
 
 type LogType = "food" | "water" | "workout"
 
@@ -118,7 +183,7 @@ export function MobileBottomNav() {
         </DrawerContent>
       </Drawer>
 
-      {/* Water — inline bottom sheet */}
+      {/* Water — quick add bottom sheet */}
       <Drawer open={logType === "water"} onOpenChange={(o) => { if (!o) setLogType(null) }}>
         <DrawerContent>
           <DrawerHeader className="flex items-center justify-between">
@@ -127,9 +192,7 @@ export function MobileBottomNav() {
               <AiOutlineClose className="h-4 w-4" />
             </button>
           </DrawerHeader>
-          <div className="px-4 pb-8 text-sm text-muted-foreground">
-            Use the Water card on the Dashboard to log water quickly.
-          </div>
+          <WaterQuickLog onSuccess={() => setLogType(null)} />
         </DrawerContent>
       </Drawer>
     </>

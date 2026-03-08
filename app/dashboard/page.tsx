@@ -73,8 +73,10 @@ export default async function Dashboard() {
     <Shell>
       <DashboardHeader heading="Dashboard" text="Monitor your progress." />
 
-      {/* Quick food logger */}
-      <QuickFoodLog />
+      {/* Quick food logger — hidden on mobile (use FAB instead) */}
+      <div className="hidden md:block">
+        <QuickFoodLog />
+      </div>
 
       {/* Fasting status */}
       {dbUser?.fastingEnabled && (
@@ -85,7 +87,7 @@ export default async function Dashboard() {
         />
       )}
 
-      <div className="rounded-xl border bg-card p-4">
+      <div className="hidden md:block rounded-xl border bg-card p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <h3 className="text-base font-semibold">Workout Tracker</h3>
@@ -93,9 +95,7 @@ export default async function Dashboard() {
               Log strength sets and weight, cardio incline/elevation, or any custom workout.
             </p>
           </div>
-          <div className="hidden md:block">
-            <WorkoutLogLauncher />
-          </div>
+          <WorkoutLogLauncher />
         </div>
       </div>
 

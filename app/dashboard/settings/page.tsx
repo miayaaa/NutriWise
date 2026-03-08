@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/session"
 import { Shell } from "@/components/layout/shell"
 import { DashboardHeader } from "@/components/pages/dashboard/dashboard-header"
 import { AppearanceForm } from "@/components/settings/appearance-form"
+import { SignOutButton } from "@/components/user/sign-out-button"
 import { UserBodyMetricsForm } from "@/components/user/user-body-metrics-form"
 import { UserCalorieGoalForm } from "@/components/user/user-calorie-goal-form"
 import { UserFastingForm } from "@/components/user/user-fasting-form"
@@ -68,6 +69,7 @@ export default async function SettingsPage() {
           }}
         />
         <AppearanceForm />
+        <SignOutButton />
       </div>
     </Shell>
   )

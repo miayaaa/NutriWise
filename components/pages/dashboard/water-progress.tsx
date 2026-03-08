@@ -72,7 +72,7 @@ export function WaterProgress({ initialLogs, dailyGoal }: WaterProgressProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Water</CardTitle>
+        <CardTitle className="text-base font-medium">Water</CardTitle>
         <BsDropletFill className="h-4 w-4 text-blue-400" />
       </CardHeader>
       <CardContent className="space-y-3">
@@ -148,14 +148,14 @@ export function WaterProgress({ initialLogs, dailyGoal }: WaterProgressProps) {
         {logs.length > 0 && (
           <div className="space-y-1 border-t border-border pt-2">
             {logs.map((log) => (
-              <div key={log.id} className="flex items-center justify-between text-xs text-muted-foreground">
+              <div key={log.id} className="group flex items-center justify-between text-xs text-muted-foreground">
                 <span>{log.amount} ml</span>
                 <button
                   onClick={() => deleteLog(log.id)}
-                  className="cursor-pointer opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity p-0.5"
+                  className="cursor-pointer opacity-30 group-hover:opacity-100 hover:text-red-400 transition-opacity p-0.5"
                   aria-label="Remove"
                 >
-                  <AiOutlineClose className="h-3 w-3 hover:text-red-400" />
+                  <AiOutlineClose className="h-3 w-3" />
                 </button>
               </div>
             ))}

@@ -29,7 +29,9 @@ export default async function DashboardLayout({
         </aside>
         <main className="flex w-full flex-1 flex-col pb-20 md:pb-0">{children}</main>
       </div>
-      <Footer />
+      <div className="hidden md:block">
+        <Footer />
+      </div>
       <MobileBottomNav />
     </div>
   )

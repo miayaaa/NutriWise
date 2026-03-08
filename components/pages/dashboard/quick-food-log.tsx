@@ -138,7 +138,7 @@ export function QuickFoodLog({ onSuccess }: { onSuccess?: () => void }) {
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
     const trimmed = description.trim()
-    if (trimmed.length < 3) {
+    if (trimmed.length < 10) {
       setEstimate(null)
       setIsEstimating(false)
       return
@@ -159,7 +159,7 @@ export function QuickFoodLog({ onSuccess }: { onSuccess?: () => void }) {
       } finally {
         setIsEstimating(false)
       }
-    }, 800)
+    }, 1800)
 
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [description])

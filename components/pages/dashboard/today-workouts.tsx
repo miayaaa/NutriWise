@@ -78,7 +78,7 @@ export function TodayWorkouts({ workouts }: TodayWorkoutsProps) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex items-center gap-2">
-          <CardTitle className="text-sm font-medium">Today&apos;s Workouts</CardTitle>
+          <CardTitle className="text-base font-medium">Today&apos;s Workouts</CardTitle>
           <BsFire className="h-4 w-4 text-orange-400" />
         </div>
       </CardHeader>
@@ -93,17 +93,17 @@ export function TodayWorkouts({ workouts }: TodayWorkoutsProps) {
           return (
             <div key={w.id} className="space-y-1">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-sm">{w.type}</span>
-                <span className="text-xs text-muted-foreground tabular-nums">{w.durationMin} min</span>
+                <span className="font-medium text-base">{w.type}</span>
+                <span className="text-sm text-muted-foreground tabular-nums">{w.durationMin} min</span>
               </div>
               {detailsSummary && (
-                <p className="text-xs text-muted-foreground pl-1">{detailsSummary}</p>
+                <p className="text-sm text-muted-foreground pl-1">{detailsSummary}</p>
               )}
               {w.notes && (
-                <p className="text-xs text-muted-foreground whitespace-pre-line pl-1">{w.notes}</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-line pl-1">{w.notes}</p>
               )}
               {w.aiComment && (
-                <p className="text-xs italic text-muted-foreground border-l-2 border-orange-300 pl-2">
+                <p className="text-sm italic text-muted-foreground border-l-2 border-orange-300 pl-2">
                   {w.aiComment}
                 </p>
               )}
