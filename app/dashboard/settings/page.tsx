@@ -10,6 +10,7 @@ import { SignOutButton } from "@/components/user/sign-out-button"
 import { UserBodyMetricsForm } from "@/components/user/user-body-metrics-form"
 import { UserCalorieGoalForm } from "@/components/user/user-calorie-goal-form"
 import { UserFastingForm } from "@/components/user/user-fasting-form"
+import { UserFitnessGoalForm } from "@/components/user/user-fitness-goal-form"
 import { UserNameForm } from "@/components/user/user-name-form"
 import { UserWaterGoalForm } from "@/components/user/user-water-goal-form"
 
@@ -32,6 +33,7 @@ export default async function SettingsPage() {
       dailyWaterGoal: true,
       heightCm: true,
       weightGoalKg: true,
+      fitnessGoal: true,
       fastingEnabled: true,
       fastingStart: true,
       fastingEnd: true,
@@ -51,6 +53,12 @@ export default async function SettingsPage() {
         />
         <UserWaterGoalForm
           user={{ id: user.id, dailyWaterGoal: dbUser?.dailyWaterGoal ?? 2000 }}
+        />
+        <UserFitnessGoalForm
+          user={{
+            id: user.id,
+            fitnessGoal: (dbUser?.fitnessGoal as any) ?? null,
+          }}
         />
         <UserBodyMetricsForm
           user={{

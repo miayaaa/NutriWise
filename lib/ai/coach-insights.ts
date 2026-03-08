@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk"
 export interface CoachInsightMetrics {
   rangeType: "7d" | "30d" | "90d"
   period: { startDate: string; endDate: string; days: number }
+  fitnessGoal: string | null
   nutrition: {
     mealCount: number
     totalCalories: number
@@ -20,6 +21,7 @@ export interface CoachInsightMetrics {
     sessionCount: number
     totalDurationMin: number
     avgDurationMin: number
+    sessions: Record<string, unknown>[]
   }
   weight: {
     logCount: number
@@ -42,6 +44,13 @@ export interface CoachInsightResult {
   score: number
 }
 
+const GOAL_LABELS: Record<string, string> = {
+  fat_loss: "Fat Loss",
+  muscle_gain: "Muscle Gain",
+  body_recomposition: "Body Recomposition",
+  maintenance: "Maintenance",
+}
+
 function fallbackCoachInsight(metrics: CoachInsightMetrics): CoachInsightResult {
   const hydrationPct = metrics.hydration.dailyGoalMl > 0
     ? Math.min((metrics.hydration.avgWaterMlPerDay / metrics.hydration.dailyGoalMl) * 100, 100)
@@ -55,17 +64,30 @@ function fallbackCoachInsight(metrics: CoachInsightMetrics): CoachInsightResult 
   const nutritionScore = metrics.nutrition.mealCount > 0 ? 30 : 10
   const score = Math.max(20, Math.min(100, workoutDaysScore + hydrationScore + nutritionScore))
 
+  const goal = metrics.fitnessGoal
   const actionItems = [
-    `Keep hydration above ${Math.round(metrics.hydration.dailyGoalMl * 0.9)} ml/day for the next week.`,
+    `Keep hydration above ${Math.round(metrics.hydration.dailyGoalMl * 0.9)} ml/day.`,
     metrics.workout.sessionCount >= 3
-      ? "Maintain workout consistency and add 5-10% progressive overload on one session."
-      : "Add at least 3 workout sessions next period, even if they are short.",
-    "Aim for protein in each meal to support recovery and satiety.",
+      ? goal === "muscle_gain"
+        ? "Add 5% progressive overload on your main compound lifts this week."
+        : goal === "fat_loss"
+        ? "Add one 20-min cardio session on top of your current schedule."
+        : "Maintain consistency and add progressive overload to one session."
+      : goal === "fat_loss"
+      ? "Target 4 sessions: 2 strength + 2 cardio. Short sessions count."
+      : "Add at least 3 workout sessions. Consistency beats intensity early on.",
+    goal === "muscle_gain"
+      ? `Protein target: ${Math.round((metrics.weight.currentKg ?? 70) * 2.0)}g/day. Prioritize it at every meal.`
+      : goal === "fat_loss"
+      ? `Keep daily calories around ${Math.round((metrics.weight.currentKg ?? 70) * 26)} kcal and protein high to preserve muscle.`
+      : "Aim for balanced macros: 30% protein, 40% carbs, 30% fat per meal.",
   ]
 
   return {
     summary: `You logged ${metrics.nutrition.mealCount} meals, ${metrics.workout.sessionCount} workouts, and averaged ${Math.round(metrics.hydration.avgWaterMlPerDay)} ml water/day over ${metrics.period.days} days. ${weightTrendText}`,
-    coachComment: "Good momentum overall. Keep the basics consistent and make one small measurable improvement this week.",
+    coachComment: goal
+      ? `Coaching for ${GOAL_LABELS[goal] ?? goal}: keep the basics consistent and make one measurable improvement this week.`
+      : "Good momentum overall. Keep the basics consistent and make one small measurable improvement this week.",
     actionItems,
     score,
   }
@@ -82,23 +104,32 @@ export async function generateCoachInsight(
   try {
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 260,
+      max_tokens: 500,
       temperature: 0.3,
       messages: [
         {
           role: "user",
-          content: `You are a professional but warm fitness coach.
-Analyze this user health dataset and return JSON only:
-${JSON.stringify(metrics)}
+          content: `You are an expert personal trainer and sports nutritionist. Be direct, specific, and professional — like a real coach, not a chatbot. Do not be vague or overly cautious.
 
-Return exactly this shape:
-{"summary":"<1 concise sentence>","coachComment":"<1 concise sentence with encouragement + key observation>","actionItems":["<specific action 1>","<specific action 2>","<specific action 3>"],"score":<int 0-100>}
+User's fitness goal: ${metrics.fitnessGoal ? GOAL_LABELS[metrics.fitnessGoal] ?? metrics.fitnessGoal : "Not set — give general advice"}
+
+Data (${metrics.period.days}-day window):
+${JSON.stringify(metrics, null, 0)}
+
+Analyze the data and return ONLY valid JSON, no markdown:
+{"summary":"<1 sentence: key stats — meals, workouts, weight trend>","coachComment":"<2-3 sentences: honest coach assessment aligned to their goal. Call out what's lacking. Be specific>","actionItems":["<concrete workout instruction: e.g. 'Increase bench press to 3x5 at 85% 1RM' or 'Add 2x20min Zone-2 cardio'>","<nutrition instruction tied to their goal: specific grams or calories>","<recovery or consistency action>"],"score":<int 0-100 based on goal alignment, not just effort>}
 
 Rules:
-- English only
-- Keep output practical and non-judgmental
-- Action items must be specific and measurable
-- Do not include markdown or extra keys`,
+- Base ALL advice on their stated fitness goal
+- For muscle_gain: push progressive overload, protein ≥2g/kg, limited cardio
+- For fat_loss: calorie deficit, preserve muscle via protein ≥1.8g/kg, add cardio
+- For body_recomposition: slight deficit, high protein ≥2g/kg, strength training priority
+- For maintenance: balance, consistency, avoid overtraining
+- If workout sessions are missing or low, say so directly — "You only trained X times. That is not enough for [goal]."
+- If specific exercises are logged (e.g. bench press 60kg), reference them: "Your bench press weight looks low for muscle gain — aim for 3x5 at RPE 8"
+- Score reflects goal achievement, not just showing up
+- No filler phrases like "Great job" unless truly warranted
+- English only, no extra keys`,
         },
       ],
     })

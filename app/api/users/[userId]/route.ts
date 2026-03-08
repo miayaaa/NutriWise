@@ -6,6 +6,7 @@ import { db } from "@/lib/db"
 import {
   userBodyMetricsSchema,
   userFastingSchema,
+  userFitnessGoalSchema,
   userNameSchema,
   userProfileSchema,
   userWaterGoalSchema,
@@ -76,6 +77,16 @@ export async function PATCH(
           weightGoalKg: payload.weightGoalKg ?? null,
           updatedAt: new Date(),
         },
+      })
+      return new Response(null, { status: 200 })
+    }
+
+    // Fitness goal update
+    if ("fitnessGoal" in body) {
+      const payload = userFitnessGoalSchema.parse(body)
+      await db.user.update({
+        where: { id: session.user.id },
+        data: { fitnessGoal: payload.fitnessGoal, updatedAt: new Date() },
       })
       return new Response(null, { status: 200 })
     }
