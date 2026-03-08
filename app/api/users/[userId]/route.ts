@@ -68,13 +68,15 @@ export async function PATCH(
     }
 
     // Body metrics update
-    if (body.heightCm !== undefined || body.weightGoalKg !== undefined) {
+    if (body.heightCm !== undefined || body.weightGoalKg !== undefined || body.age !== undefined || body.gender !== undefined) {
       const payload = userBodyMetricsSchema.parse(body)
       await db.user.update({
         where: { id: session.user.id },
         data: {
           heightCm: payload.heightCm ?? null,
           weightGoalKg: payload.weightGoalKg ?? null,
+          age: payload.age ?? null,
+          gender: payload.gender ?? null,
           updatedAt: new Date(),
         },
       })

@@ -116,6 +116,24 @@ function CalorieSkeletonCard() {
   )
 }
 
+const pad = (n: number) => String(n).padStart(2, "0")
+function toDateStr(d: Date) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+function toTimeStr(d: Date) {
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+function formatLoggedAt(date: string, time: string): string {
+  if (!date || !time) return "Now"
+  const d = new Date(`${date}T${time}`)
+  const now = new Date()
+  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1)
+  const t = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  if (d.toDateString() === now.toDateString()) return `Today, ${t}`
+  if (d.toDateString() === yesterday.toDateString()) return `Yesterday, ${t}`
+  return d.toLocaleDateString([], { month: "short", day: "numeric" }) + `, ${t}`
+}
+
 export function QuickFoodLog({ onSuccess }: { onSuccess?: () => void }) {
   const router = useRouter()
   const [mealType, setMealType] = React.useState<MealType>("SNACK")
@@ -123,7 +141,16 @@ export function QuickFoodLog({ onSuccess }: { onSuccess?: () => void }) {
   const [estimate, setEstimate] = React.useState<CalorieEstimate | null>(null)
   const [isEstimating, setIsEstimating] = React.useState(false)
   const [isLogging, setIsLogging] = React.useState(false)
+  const [logDate, setLogDate] = React.useState("")
+  const [logTime, setLogTime] = React.useState("")
+  const [showTimePicker, setShowTimePicker] = React.useState(false)
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  React.useEffect(() => {
+    const now = new Date()
+    setLogDate(toDateStr(now))
+    setLogTime(toTimeStr(now))
+  }, [])
 
   // Auto-select meal type by time of day on mount
   React.useEffect(() => {
@@ -181,6 +208,7 @@ export function QuickFoodLog({ onSuccess }: { onSuccess?: () => void }) {
           carbs: estimate?.carbs,
           fat: estimate?.fat,
           aiComment: estimate?.comment,
+          date: logDate && logTime ? new Date(`${logDate}T${logTime}`).toISOString() : new Date().toISOString(),
         }),
       })
 
@@ -199,6 +227,10 @@ export function QuickFoodLog({ onSuccess }: { onSuccess?: () => void }) {
 
       setDescription("")
       setEstimate(null)
+      const now = new Date()
+      setLogDate(toDateStr(now))
+      setLogTime(toTimeStr(now))
+      setShowTimePicker(false)
       router.refresh()
       onSuccess?.()
     } finally {
@@ -228,6 +260,43 @@ export function QuickFoodLog({ onSuccess }: { onSuccess?: () => void }) {
             <span>{opt.label}</span>
           </button>
         ))}
+      </div>
+
+      {/* Time picker */}
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => setShowTimePicker((v) => !v)}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          <Icons.calendar className="h-3.5 w-3.5 shrink-0" />
+          <span>{formatLoggedAt(logDate, logTime)}</span>
+          <span className="text-muted-foreground/40">· tap to change</span>
+        </button>
+
+        {showTimePicker && (
+          <div className="grid grid-cols-1 gap-2">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Date</p>
+              <input
+                type="date"
+                value={logDate}
+                max={toDateStr(new Date())}
+                onChange={(e) => setLogDate(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Time</p>
+              <input
+                type="time"
+                value={logTime}
+                onChange={(e) => setLogTime(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Food input */}

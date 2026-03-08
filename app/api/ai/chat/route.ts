@@ -38,6 +38,8 @@ async function buildSystemPrompt(userId: string): Promise<string> {
         heightCm: true,
         weightGoalKg: true,
         fitnessGoal: true,
+        age: true,
+        gender: true,
       },
     }),
     db.foodLog.findMany({
@@ -61,6 +63,18 @@ async function buildSystemPrompt(userId: string): Promise<string> {
   const goalLabel = user?.fitnessGoal ? GOAL_LABELS[user.fitnessGoal] ?? user.fitnessGoal : null
   const todayKcal = todayMeals.reduce((s, m) => s + (m.aiCalories ?? 0), 0)
   const todayProtein = todayMeals.reduce((s, m) => s + (m.protein ?? 0), 0)
+
+  // BMR estimate (Mifflin-St Jeor) if we have enough data
+  let bmrEstimate: string | null = null
+  if (user?.age && user?.heightCm && latestWeight?.weightKg && user?.gender) {
+    const w = latestWeight.weightKg
+    const h = user.heightCm
+    const a = user.age
+    const bmr = user.gender === "female"
+      ? 10 * w + 6.25 * h - 5 * a - 161
+      : 10 * w + 6.25 * h - 5 * a + 5
+    bmrEstimate = `~${Math.round(bmr)} kcal/day (sedentary BMR)`
+  }
 
   type WorkoutDetailsJson = {
     mode?: string
@@ -91,11 +105,14 @@ async function buildSystemPrompt(userId: string): Promise<string> {
 
 ## User Profile
 - Name: ${user?.name ?? "User"}
-- Fitness Goal: ${goalLabel ?? "Not set — ask them to set it in Settings"}
+- Age: ${user?.age ?? "Not set"}
+- Gender: ${user?.gender ?? "Not set"}
+- Height: ${user?.heightCm ? `${user.heightCm} cm` : "Not set"}
 - Current Weight: ${latestWeight ? `${latestWeight.weightKg} kg` : "Not logged"}
 - Weight Goal: ${user?.weightGoalKg ? `${user.weightGoalKg} kg` : "Not set"}
-- Height: ${user?.heightCm ? `${user.heightCm} cm` : "Not set"}
+- Estimated BMR: ${bmrEstimate ?? "Not enough data (need age, height, weight, gender)"}
 - Daily Calorie Target: ${user?.dailyCalorieGoal ? `${user.dailyCalorieGoal} kcal` : "Not set"}
+- Fitness Goal: ${goalLabel ?? "Not set — ask them to set it in Settings"}
 
 ## Today's Nutrition
 - Calories consumed: ${Math.round(todayKcal)} kcal${user?.dailyCalorieGoal ? ` / ${user.dailyCalorieGoal} kcal goal` : ""}

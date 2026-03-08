@@ -1,7 +1,7 @@
 import "./globals.css"
 
 import { Metadata, Viewport } from "next"
-import { Inter } from "next/font/google"
+import { Inter, Barlow_Condensed } from "next/font/google"
 import NextTopLoader from "nextjs-toploader"
 
 import { siteConfig } from "@/config/site"
@@ -10,6 +10,12 @@ import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "@/components/theme-provider"
 
 const inter = Inter({ subsets: ["latin"] })
+
+const barlowCondensed = Barlow_Condensed({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-brand",
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url.base),
@@ -73,7 +79,7 @@ interface RootLayoutProps {
 export default async function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn("antialiased overflow-x-hidden w-full", inter.className)}>
+      <body className={cn("antialiased overflow-x-hidden w-full", inter.className, barlowCondensed.variable)}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <NextTopLoader color="#22c55e" height={2.5} showSpinner={false} />
           <div
