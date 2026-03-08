@@ -3,7 +3,7 @@ import { z } from "zod"
 
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { userNameSchema } from "@/lib/validations/user"
+import { userFastingSchema, userNameSchema, userProfileSchema } from "@/lib/validations/user"
 
 const routeContextSchema = z.object({
   params: z.object({
@@ -23,18 +23,38 @@ export async function PATCH(
       return new Response(null, { status: 403 })
     }
 
-    // Edit username based on input
     const body = await req.json()
-    const payload = userNameSchema.parse(body)
 
+    // dailyCalorieGoal update
+    if (body.dailyCalorieGoal !== undefined) {
+      const payload = userProfileSchema.parse(body)
+      await db.user.update({
+        where: { id: session.user.id },
+        data: { dailyCalorieGoal: payload.dailyCalorieGoal, updatedAt: new Date() },
+      })
+      return new Response(null, { status: 200 })
+    }
+
+    // Fasting window update
+    if (body.fastingEnabled !== undefined) {
+      const payload = userFastingSchema.parse(body)
+      await db.user.update({
+        where: { id: session.user.id },
+        data: {
+          fastingEnabled: payload.fastingEnabled,
+          fastingStart: payload.fastingStart,
+          fastingEnd: payload.fastingEnd,
+          updatedAt: new Date(),
+        },
+      })
+      return new Response(null, { status: 200 })
+    }
+
+    // Name update
+    const payload = userNameSchema.parse(body)
     await db.user.update({
-      where: {
-        id: session.user.id,
-      },
-      data: {
-        name: payload.name,
-        updatedAt: new Date(),
-      },
+      where: { id: session.user.id },
+      data: { name: payload.name, updatedAt: new Date() },
     })
 
     return new Response(null, { status: 200 })

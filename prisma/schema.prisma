@@ -45,12 +45,17 @@ model User {
   email         String?   @unique
   emailVerified DateTime? @map(name: "email_verified")
   image         String?
-  createdAt     DateTime  @default(now()) @map(name: "created_at")
-  updatedAt     DateTime  @updatedAt @map(name: "updated_at")
+  dailyCalorieGoal Int?      @map(name: "daily_calorie_goal")
+  fastingEnabled   Boolean   @default(false) @map(name: "fasting_enabled")
+  fastingStart     Int       @default(12) @map(name: "fasting_start")
+  fastingEnd       Int       @default(20) @map(name: "fasting_end")
+  createdAt        DateTime  @default(now()) @map(name: "created_at")
+  updatedAt        DateTime  @updatedAt @map(name: "updated_at")
 
   accounts   Account[]
   sessions   Session[]
   activities Activity[]
+  foodLogs   FoodLog[]
 
   @@map(name: "users")
 }
@@ -91,4 +96,28 @@ model ActivityLog {
   activity Activity @relation(fields: [activityId], references: [id])
 
   @@map(name: "activity_log")
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+model FoodLog {
+  id              String   @id @default(cuid())
+  userId          String   @map(name: "user_id")
+  date            DateTime @default(now())
+  mealType        MealType @default(SNACK) @map(name: "meal_type")
+  foodDescription String   @map(name: "food_description") @db.Text
+  aiCalories      Float?   @map(name: "ai_calories")
+  protein         Float?
+  carbs           Float?
+  fat             Float?
+  createdAt       DateTime @default(now()) @map(name: "created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map(name: "food_logs")
 }

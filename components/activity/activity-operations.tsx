@@ -122,6 +122,7 @@ export function ActivityOperations({
           <LogsAddForm
             activityId={activity.id}
             setShowLogAlert={setShowLogAlert}
+            isFoodActivity
           />
         </CredenzaContent>
       </Credenza>

@@ -1,0 +1,8 @@
+-- CreateEnum
+CREATE TYPE "MealType" AS ENUM ('BREAKFAST', 'LUNCH', 'DINNER', 'SNACK');
+
+-- AlterTable
+ALTER TABLE "food_logs" ADD COLUMN     "carbs" DOUBLE PRECISION,
+ADD COLUMN     "fat" DOUBLE PRECISION,
+ADD COLUMN     "meal_type" "MealType" NOT NULL DEFAULT 'SNACK',
+ADD COLUMN     "protein" DOUBLE PRECISION;

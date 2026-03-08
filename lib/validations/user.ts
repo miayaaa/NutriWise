@@ -3,3 +3,13 @@ import * as z from "zod"
 export const userNameSchema = z.object({
   name: z.string().min(3).max(32),
 })
+
+export const userProfileSchema = z.object({
+  dailyCalorieGoal: z.number().int().min(500).max(10000),
+})
+
+export const userFastingSchema = z.object({
+  fastingEnabled: z.boolean(),
+  fastingStart: z.number().int().min(0).max(23),
+  fastingEnd: z.number().int().min(0).max(23),
+})

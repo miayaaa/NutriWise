@@ -22,6 +22,7 @@ interface LogsDeleteButtonProps {
     id: string
     date: Date
     count: number
+    source: "activity" | "food"
     activity: {
       id: string
       name: string
@@ -29,10 +30,13 @@ interface LogsDeleteButtonProps {
   }
 }
 
-async function deleteActivity(activityId: string, logsId: string) {
-  const response = await fetch(`/api/activities/${activityId}/logs/${logsId}`, {
-    method: "DELETE",
-  })
+async function deleteLog(logs: LogsDeleteButtonProps["logs"]) {
+  const url =
+    logs.source === "food"
+      ? `/api/food-logs/${logs.id}`
+      : `/api/activities/${logs.activity.id}/logs/${logs.id}`
+
+  const response = await fetch(url, { method: "DELETE" })
 
   if (!response?.ok) {
     toast({
@@ -56,7 +60,7 @@ export function LogsDeleteButton({ logs }: LogsDeleteButtonProps) {
 
   const handleDelete = async () => {
     setIsDeleteLoading(true)
-    const deleted = await deleteActivity(logs.activity.id, logs.id)
+    const deleted = await deleteLog(logs)
 
     if (deleted) {
       setIsDeleteLoading(false)

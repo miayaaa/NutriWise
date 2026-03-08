@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next"
 import * as z from "zod"
 
+import { estimateCalories } from "@/lib/ai/calories"
 import { verifyActivity } from "@/lib/api/activities"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
@@ -8,8 +9,8 @@ import { db } from "@/lib/db"
 const activityLogCreateSchema = z.object({
   date: z.string(),
   count: z.number().default(1),
-  foodDescription: z.string().max(1000).optional(),
-  aiCalories: z.number().positive().optional(),
+  foodDescription: z.string().max(2000).optional(),
+  aiCalories: z.number().min(0).optional(),
 })
 
 const routeContextSchema = z.object({
@@ -73,6 +74,15 @@ export async function POST(
     const json = await req.json()
     const body = activityLogCreateSchema.parse(json)
 
+    // Auto-estimate calories via AI if foodDescription is provided but aiCalories is not
+    let aiCalories = body.aiCalories
+    if (body.foodDescription && !aiCalories) {
+      const estimate = await estimateCalories(body.foodDescription)
+      if (estimate) {
+        aiCalories = estimate.calories
+      }
+    }
+
     // Check if the log exists for the current date
     const existingLog = await db.activityLog.findFirst({
       where: {
@@ -104,10 +114,11 @@ export async function POST(
         count: body.count,
         activityId: params.activityId,
         foodDescription: body.foodDescription,
-        aiCalories: body.aiCalories,
+        aiCalories,
       },
       select: {
         id: true,
+        aiCalories: true,
       },
     })
 

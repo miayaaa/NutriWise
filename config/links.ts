@@ -26,6 +26,11 @@ export const dashboardLinks: Navigation = {
       icon: "activity",
     },
     {
+      title: "History",
+      href: "/dashboard/history",
+      icon: "history",
+    },
+    {
       title: "Settings",
       href: "/dashboard/settings",
       icon: "settings",

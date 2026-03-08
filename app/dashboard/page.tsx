@@ -1,8 +1,9 @@
 import { Metadata } from "next"
 import { redirect } from "next/navigation"
 
-import { getDashboardData } from "@/lib/api/dashboard"
+import { getDashboardData, getTodayFoodLogs } from "@/lib/api/dashboard"
 import { authOptions } from "@/lib/auth"
+import { db } from "@/lib/db"
 import { getCurrentUser } from "@/lib/session"
 import { dateRangeParams } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -15,6 +16,9 @@ import { DateRangePicker } from "@/components/date-range-picker"
 import { Shell } from "@/components/layout/shell"
 import { DashboardCards } from "@/components/pages/dashboard/dashboard-cards"
 import { DashboardHeader } from "@/components/pages/dashboard/dashboard-header"
+import { FastingStatus } from "@/components/pages/dashboard/fasting-status"
+import { QuickFoodLog } from "@/components/pages/dashboard/quick-food-log"
+import { TodayIntake } from "@/components/pages/dashboard/today-intake"
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -33,7 +37,14 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
   }
 
   const dateRange = dateRangeParams(searchParams)
-  const dashboardData = await getDashboardData(user.id, dateRange)
+  const [dashboardData, todayMeals, dbUser] = await Promise.all([
+    getDashboardData(user.id, dateRange),
+    getTodayFoodLogs(user.id),
+    db.user.findUnique({
+      where: { id: user.id },
+      select: { dailyCalorieGoal: true, fastingEnabled: true, fastingStart: true, fastingEnd: true },
+    }),
+  ])
 
   const activityData =
     dashboardData.activityCountByDate.length > 0 &&
@@ -51,6 +62,25 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
       <DashboardHeader heading="Dashboard" text="Monitor your progress.">
         <DateRangePicker />
       </DashboardHeader>
+
+      {/* Quick food logger */}
+      <QuickFoodLog />
+
+      {/* Fasting status — only shown when enabled */}
+      {dbUser?.fastingEnabled && (
+        <FastingStatus
+          fastingStart={dbUser.fastingStart}
+          fastingEnd={dbUser.fastingEnd}
+          todayLogs={todayMeals.map((m) => ({ date: m.date, foodDescription: m.foodDescription }))}
+        />
+      )}
+
+      {/* Today's food summary */}
+      <TodayIntake
+        meals={todayMeals}
+        dailyCalorieGoal={dbUser?.dailyCalorieGoal}
+      />
+
       <div className={layout}>
         <ScrollArea className={scrollClass}>
           <div className="divide-y divide-border">
