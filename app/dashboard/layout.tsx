@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/session"
 import Footer from "@/components/layout/footer"
 import Navbar from "@/components/layout/navbar"
 import { DashboardNav } from "@/components/pages/dashboard/dashboard-nav"
+import { MobileBottomNav } from "@/components/pages/dashboard/mobile-bottom-nav"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -26,9 +27,10 @@ export default async function DashboardLayout({
         <aside className="hidden w-[200px] flex-col md:flex">
           <DashboardNav items={dashboardLinks.data} />
         </aside>
-        <main className="flex w-full flex-1 flex-col">{children}</main>
+        <main className="flex w-full flex-1 flex-col pb-20 md:pb-0">{children}</main>
       </div>
       <Footer />
+      <MobileBottomNav />
     </div>
   )
 }

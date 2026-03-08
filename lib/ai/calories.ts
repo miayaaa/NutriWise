@@ -7,6 +7,7 @@ export interface CalorieEstimate {
   fat: number
   breakdown: Array<{ item: string; calories: number }>
   confidence: "high" | "medium" | "low"
+  comment?: string
 }
 
 export async function estimateCalories(
@@ -20,7 +21,7 @@ export async function estimateCalories(
   try {
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 256,
+      max_tokens: 260,
       temperature: 0,
       messages: [
         {
@@ -28,7 +29,13 @@ export async function estimateCalories(
           content: `Estimate nutrition for: "${foodDescription}"
 
 Respond ONLY with valid JSON (no markdown):
-{"calories":<int>,"protein":<int>,"carbs":<int>,"fat":<int>,"breakdown":[{"item":"<name>","calories":<int>}],"confidence":"<high|medium|low>"}`,
+{"calories":<int>,"protein":<int>,"carbs":<int>,"fat":<int>,"breakdown":[{"item":"<name>","calories":<int>}],"confidence":"<high|medium|low>","comment":"<exactly 1 concise English coaching sentence with encouragement + one practical next step, max 20 words>"}}
+
+Rules:
+- Keep calories/macros realistic and internally consistent.
+- Comment tone: professional, warm, actionable.
+- Do not use warnings unless strongly necessary.
+- No extra keys.`,
         },
       ],
     })

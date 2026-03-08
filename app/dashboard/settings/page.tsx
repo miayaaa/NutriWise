@@ -10,6 +10,7 @@ import { AppearanceForm } from "@/components/settings/appearance-form"
 import { UserCalorieGoalForm } from "@/components/user/user-calorie-goal-form"
 import { UserFastingForm } from "@/components/user/user-fasting-form"
 import { UserNameForm } from "@/components/user/user-name-form"
+import { UserWaterGoalForm } from "@/components/user/user-water-goal-form"
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -25,7 +26,7 @@ export default async function SettingsPage() {
 
   const dbUser = await db.user.findUnique({
     where: { id: user.id },
-    select: { dailyCalorieGoal: true, fastingEnabled: true, fastingStart: true, fastingEnd: true },
+    select: { dailyCalorieGoal: true, dailyWaterGoal: true, fastingEnabled: true, fastingStart: true, fastingEnd: true },
   })
 
   return (
@@ -38,6 +39,9 @@ export default async function SettingsPage() {
         <UserNameForm user={{ id: user.id, name: user.name || "" }} />
         <UserCalorieGoalForm
           user={{ id: user.id, dailyCalorieGoal: dbUser?.dailyCalorieGoal }}
+        />
+        <UserWaterGoalForm
+          user={{ id: user.id, dailyWaterGoal: dbUser?.dailyWaterGoal ?? 2000 }}
         />
         <UserFastingForm
           user={{

@@ -3,7 +3,7 @@ import { z } from "zod"
 
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { userFastingSchema, userNameSchema, userProfileSchema } from "@/lib/validations/user"
+import { userFastingSchema, userNameSchema, userProfileSchema, userWaterGoalSchema } from "@/lib/validations/user"
 
 const routeContextSchema = z.object({
   params: z.object({
@@ -31,6 +31,16 @@ export async function PATCH(
       await db.user.update({
         where: { id: session.user.id },
         data: { dailyCalorieGoal: payload.dailyCalorieGoal, updatedAt: new Date() },
+      })
+      return new Response(null, { status: 200 })
+    }
+
+    // Water goal update
+    if (body.dailyWaterGoal !== undefined) {
+      const payload = userWaterGoalSchema.parse(body)
+      await db.user.update({
+        where: { id: session.user.id },
+        data: { dailyWaterGoal: payload.dailyWaterGoal, updatedAt: new Date() },
       })
       return new Response(null, { status: 200 })
     }

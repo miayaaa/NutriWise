@@ -18,6 +18,7 @@ interface CalorieEstimate {
   fat: number
   breakdown: Array<{ item: string; calories: number }>
   confidence: "high" | "medium" | "low"
+  comment?: string
 }
 
 const MEAL_OPTIONS: { value: MealType; label: string; emoji: string }[] = [
@@ -73,6 +74,11 @@ function CaloriePreviewCard({ estimate }: { estimate: CalorieEstimate }) {
         </span>
       </div>
       <MacroBar protein={estimate.protein} carbs={estimate.carbs} fat={estimate.fat} />
+      {estimate.comment && (
+        <p className="text-xs text-muted-foreground italic border-l-2 border-primary/40 pl-2">
+          {estimate.comment}
+        </p>
+      )}
       {estimate.breakdown.length > 0 && (
         <div className="space-y-1.5 pt-1 border-t border-border">
           {estimate.breakdown.map((item, i) => (
@@ -110,7 +116,7 @@ function CalorieSkeletonCard() {
   )
 }
 
-export function QuickFoodLog() {
+export function QuickFoodLog({ onSuccess }: { onSuccess?: () => void }) {
   const router = useRouter()
   const [mealType, setMealType] = React.useState<MealType>("SNACK")
   const [description, setDescription] = React.useState("")
@@ -174,6 +180,7 @@ export function QuickFoodLog() {
           protein: estimate?.protein,
           carbs: estimate?.carbs,
           fat: estimate?.fat,
+          aiComment: estimate?.comment,
         }),
       })
 
@@ -193,6 +200,7 @@ export function QuickFoodLog() {
       setDescription("")
       setEstimate(null)
       router.refresh()
+      onSuccess?.()
     } finally {
       setIsLogging(false)
     }

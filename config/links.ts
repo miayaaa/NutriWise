@@ -21,16 +21,6 @@ export const dashboardLinks: Navigation = {
       icon: "dashboard",
     },
     {
-      title: "Food Log",
-      href: "/dashboard/activities",
-      icon: "activity",
-    },
-    {
-      title: "History",
-      href: "/dashboard/history",
-      icon: "history",
-    },
-    {
       title: "Settings",
       href: "/dashboard/settings",
       icon: "settings",

@@ -1,72 +1,79 @@
 import { Metadata } from "next"
 import { redirect } from "next/navigation"
 
-import { getDashboardData, getTodayFoodLogs } from "@/lib/api/dashboard"
+import { getTodayFoodLogs } from "@/lib/api/dashboard"
+import { getFoodHistory } from "@/lib/api/history"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { getCurrentUser } from "@/lib/session"
-import { dateRangeParams } from "@/lib/utils"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { ActivityList } from "@/components/activity/activity-list"
-import { logColumns } from "@/components/activity/logs/logs-columns"
-import { LineChartComponent } from "@/components/charts/linechart"
-import { PieChartComponent } from "@/components/charts/piechart"
-import { DataTable } from "@/components/data-table"
-import { DateRangePicker } from "@/components/date-range-picker"
 import { Shell } from "@/components/layout/shell"
-import { DashboardCards } from "@/components/pages/dashboard/dashboard-cards"
 import { DashboardHeader } from "@/components/pages/dashboard/dashboard-header"
 import { FastingStatus } from "@/components/pages/dashboard/fasting-status"
+import { FoodHistoryView } from "@/components/pages/dashboard/food-history-view"
 import { QuickFoodLog } from "@/components/pages/dashboard/quick-food-log"
 import { TodayIntake } from "@/components/pages/dashboard/today-intake"
+import { TodayWorkouts } from "@/components/pages/dashboard/today-workouts"
+import { WaterProgress } from "@/components/pages/dashboard/water-progress"
+import { WorkoutLogLauncher } from "@/components/pages/dashboard/workout-log-launcher"
 
 export const metadata: Metadata = {
   title: "Dashboard",
   description: "Monitor your progress.",
 }
 
-interface DashboardProps {
-  searchParams: { from: string; to: string }
-}
-
-export default async function Dashboard({ searchParams }: DashboardProps) {
+export default async function Dashboard() {
   const user = await getCurrentUser()
+  if (!user) redirect(authOptions?.pages?.signIn || "/signin")
 
-  if (!user) {
-    redirect(authOptions?.pages?.signIn || "/signin")
-  }
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const todayEnd = new Date()
+  todayEnd.setHours(23, 59, 59, 999)
 
-  const dateRange = dateRangeParams(searchParams)
-  const [dashboardData, todayMeals, dbUser] = await Promise.all([
-    getDashboardData(user.id, dateRange),
+  const [todayMeals, dbUser, history, todayWater, todayWorkouts] = await Promise.all([
     getTodayFoodLogs(user.id),
     db.user.findUnique({
       where: { id: user.id },
-      select: { dailyCalorieGoal: true, fastingEnabled: true, fastingStart: true, fastingEnd: true },
+      select: {
+        dailyCalorieGoal: true,
+        dailyWaterGoal: true,
+        fastingEnabled: true,
+        fastingStart: true,
+        fastingEnd: true,
+      },
     }),
+    getFoodHistory(user.id),
+    db.waterLog.findMany({
+      where: { userId: user.id, date: { gte: today, lte: todayEnd } },
+      select: { id: true, amount: true, date: true },
+      orderBy: { date: "asc" },
+    }),
+    (async () => {
+      try {
+        return await db.workoutLog.findMany({
+          where: { userId: user.id, date: { gte: today, lte: todayEnd } },
+          select: { id: true, type: true, durationMin: true, details: true, notes: true, aiComment: true },
+          orderBy: { date: "asc" },
+        })
+      } catch {
+        const legacyLogs = await db.workoutLog.findMany({
+          where: { userId: user.id, date: { gte: today, lte: todayEnd } },
+          select: { id: true, type: true, durationMin: true, notes: true, aiComment: true },
+          orderBy: { date: "asc" },
+        })
+        return legacyLogs.map((log) => ({ ...log, details: null }))
+      }
+    })(),
   ])
-
-  const activityData =
-    dashboardData.activityCountByDate.length > 0 &&
-    dashboardData.topActivities.length > 0
-
-  const layout = activityData
-    ? "grid grid-cols-1 gap-4 md:grid-cols-2"
-    : "grid grid-cols-1"
-  const scrollClass = activityData
-    ? "h-[17rem] rounded-lg border"
-    : "h-[25.1rem] rounded-lg border"
 
   return (
     <Shell>
-      <DashboardHeader heading="Dashboard" text="Monitor your progress.">
-        <DateRangePicker />
-      </DashboardHeader>
+      <DashboardHeader heading="Dashboard" text="Monitor your progress." />
 
       {/* Quick food logger */}
       <QuickFoodLog />
 
-      {/* Fasting status — only shown when enabled */}
+      {/* Fasting status */}
       {dbUser?.fastingEnabled && (
         <FastingStatus
           fastingStart={dbUser.fastingStart}
@@ -75,29 +82,39 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
         />
       )}
 
-      {/* Today's food summary */}
-      <TodayIntake
-        meals={todayMeals}
-        dailyCalorieGoal={dbUser?.dailyCalorieGoal}
-      />
-
-      <div className={layout}>
-        <ScrollArea className={scrollClass}>
-          <div className="divide-y divide-border">
-            <ActivityList activities={dashboardData.userActivities} />
+      <div className="rounded-xl border bg-card p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h3 className="text-base font-semibold">Workout Tracker</h3>
+            <p className="text-sm text-muted-foreground">
+              Log strength sets and weight, cardio incline/elevation, or any custom workout.
+            </p>
           </div>
-        </ScrollArea>
-        {activityData && (
-          <>
-            <DashboardCards data={dashboardData} searchParams={searchParams} />
-            <LineChartComponent data={dashboardData.activityCountByDate} />
-            <PieChartComponent data={dashboardData.topActivities} />
-          </>
-        )}
+          <div className="hidden md:block">
+            <WorkoutLogLauncher />
+          </div>
+        </div>
       </div>
-      <DataTable columns={logColumns} data={dashboardData.logs}>
-        Log History
-      </DataTable>
+
+      {/* Today's workouts */}
+      <TodayWorkouts workouts={todayWorkouts} />
+
+      {/* Today summary — 2 col on md+ */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <TodayIntake meals={todayMeals} dailyCalorieGoal={dbUser?.dailyCalorieGoal} />
+        <WaterProgress
+          initialLogs={todayWater.map((l) => ({ ...l, date: l.date.toISOString() }))}
+          dailyGoal={dbUser?.dailyWaterGoal ?? 2000}
+        />
+      </div>
+
+      {/* 30-day food history */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          Recent History
+        </h3>
+        <FoodHistoryView history={history} />
+      </div>
     </Shell>
   )
 }

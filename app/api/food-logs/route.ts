@@ -11,6 +11,7 @@ const bodySchema = z.object({
   protein: z.number().min(0).optional(),
   carbs: z.number().min(0).optional(),
   fat: z.number().min(0).optional(),
+  aiComment: z.string().max(200).optional(),
   date: z.string().optional(),
 })
 
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
         protein: body.protein,
         carbs: body.carbs,
         fat: body.fat,
+        aiComment: body.aiComment,
         date: body.date ? new Date(body.date) : new Date(),
       },
       select: { id: true, aiCalories: true },
