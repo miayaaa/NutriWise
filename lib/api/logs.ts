@@ -10,11 +10,13 @@ export async function getLogs(
   const typeCondition =
     type === "activity" ? { activityId: id } : { activity: { userId: id } }
 
-  return await db.activityLog.findMany({
+  const rows = await db.activityLog.findMany({
     select: {
       id: true,
       date: true,
       count: true,
+      foodDescription: true,
+      aiCalories: true,
       activity: {
         select: {
           id: true,
@@ -33,6 +35,8 @@ export async function getLogs(
       date: "desc",
     },
   })
+
+  return rows.map((r) => ({ ...r, source: "activity" as const }))
 }
 
 export async function getStreak(
