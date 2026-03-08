@@ -59,6 +59,7 @@ model User {
   foodLogs    FoodLog[]
   waterLogs   WaterLog[]
   workoutLogs WorkoutLog[]
+  coachInsights CoachInsight[]
 
   @@map(name: "users")
 }
@@ -148,4 +149,22 @@ model WorkoutLog {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map(name: "workout_logs")
+}
+
+model CoachInsight {
+  id           String   @id @default(cuid())
+  userId       String   @map(name: "user_id")
+  rangeType    String   @map(name: "range_type")
+  startDate    DateTime @map(name: "start_date")
+  endDate      DateTime @map(name: "end_date")
+  summary      String   @db.Text
+  coachComment String   @map(name: "coach_comment") @db.Text
+  actionItems  Json     @map(name: "action_items")
+  score        Int
+  generatedAt  DateTime @default(now()) @map(name: "generated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, rangeType, startDate, endDate])
+  @@map(name: "coach_insights")
 }

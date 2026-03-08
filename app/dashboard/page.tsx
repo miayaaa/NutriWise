@@ -1,12 +1,14 @@
 import { Metadata } from "next"
 import { redirect } from "next/navigation"
 
+import { getCoachInsight } from "@/lib/api/coach-insights"
 import { getTodayFoodLogs } from "@/lib/api/dashboard"
 import { getFoodHistory } from "@/lib/api/history"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { getCurrentUser } from "@/lib/session"
 import { Shell } from "@/components/layout/shell"
+import { CoachInsightsCard } from "@/components/pages/dashboard/coach-insights-card"
 import { DashboardHeader } from "@/components/pages/dashboard/dashboard-header"
 import { FastingStatus } from "@/components/pages/dashboard/fasting-status"
 import { FoodHistoryView } from "@/components/pages/dashboard/food-history-view"
@@ -30,7 +32,7 @@ export default async function Dashboard() {
   const todayEnd = new Date()
   todayEnd.setHours(23, 59, 59, 999)
 
-  const [todayMeals, dbUser, history, todayWater, todayWorkouts] = await Promise.all([
+  const [todayMeals, dbUser, history, todayWater, todayWorkouts, coachInsight] = await Promise.all([
     getTodayFoodLogs(user.id),
     db.user.findUnique({
       where: { id: user.id },
@@ -62,6 +64,26 @@ export default async function Dashboard() {
           orderBy: { date: "asc" },
         })
         return legacyLogs.map((log) => ({ ...log, details: null }))
+      }
+    })(),
+    (async () => {
+      try {
+        return await getCoachInsight(user.id, "7d")
+      } catch {
+        return {
+          rangeType: "7d" as const,
+          startDate: new Date().toISOString(),
+          endDate: new Date().toISOString(),
+          summary: "Track a few days of logs to unlock personalized coach insights.",
+          coachComment: "Consistency first. Once your logs stabilize, the coach feedback will become more precise.",
+          actionItems: [
+            "Log meals consistently for the next 7 days.",
+            "Log water intake daily against your goal.",
+            "Record at least 3 workout sessions this week.",
+          ],
+          score: 60,
+          generatedAt: new Date().toISOString(),
+        }
       }
     })(),
   ])
@@ -107,6 +129,8 @@ export default async function Dashboard() {
           dailyGoal={dbUser?.dailyWaterGoal ?? 2000}
         />
       </div>
+
+      <CoachInsightsCard initialInsight={coachInsight} />
 
       {/* 30-day food history */}
       <div className="space-y-2">
