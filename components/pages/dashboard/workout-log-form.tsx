@@ -226,9 +226,10 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
             onChange={(e) => setExerciseName(e.target.value)}
             placeholder="Exercise (e.g. Barbell Squat)"
           />
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-3 gap-2">
             <Input
               type="number"
+              inputMode="decimal"
               min={1}
               max={50}
               value={sets}
@@ -237,6 +238,7 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
             />
             <Input
               type="number"
+              inputMode="decimal"
               min={1}
               max={100}
               value={reps}
@@ -245,16 +247,18 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
             />
             <Input
               type="number"
+              inputMode="decimal"
               min={0}
               max={1000}
               step="0.5"
               value={weightKg}
               onChange={(e) => setWeightKg(e.target.value)}
-              placeholder="Weight (kg)"
+              placeholder="kg"
             />
           </div>
           <Input
             type="number"
+            inputMode="decimal"
             min={0}
             max={600}
             value={restSec}
@@ -291,41 +295,45 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
               placeholder="Custom cardio type"
             />
           )}
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2">
             <Input
               type="number"
+              inputMode="decimal"
               min={0}
               max={200}
               step="0.1"
               value={distanceKm}
               onChange={(e) => setDistanceKm(e.target.value)}
-              placeholder="Distance (km, optional)"
+              placeholder="Distance (km)"
             />
             <Input
               type="number"
+              inputMode="decimal"
               min={0}
               max={80}
               step="0.1"
               value={avgSpeedKph}
               onChange={(e) => setAvgSpeedKph(e.target.value)}
-              placeholder="Avg speed (km/h, optional)"
+              placeholder="Speed (km/h)"
             />
             <Input
               type="number"
+              inputMode="decimal"
               min={0}
               max={30}
               step="0.5"
               value={inclinePct}
               onChange={(e) => setInclinePct(e.target.value)}
-              placeholder="Incline (% , optional)"
+              placeholder="Incline (%)"
             />
             <Input
               type="number"
+              inputMode="decimal"
               min={0}
               max={10000}
               value={elevationGainM}
               onChange={(e) => setElevationGainM(e.target.value)}
-              placeholder="Elevation gain (m, optional)"
+              placeholder="Elevation (m)"
             />
           </div>
         </div>
@@ -347,12 +355,13 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
         <p className="text-sm font-medium">Duration (minutes)</p>
         <Input
           type="number"
+          inputMode="decimal"
           min={1}
           max={600}
           value={durationMin}
           onChange={(e) => setDurationMin(e.target.value)}
           placeholder="e.g. 45"
-          className="w-32"
+          className="w-full sm:w-32"
         />
       </div>
 

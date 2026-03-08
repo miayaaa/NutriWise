@@ -124,6 +124,7 @@ export function WaterProgress({ initialLogs, dailyGoal }: WaterProgressProps) {
           <div className="flex gap-2">
             <input
               type="number"
+              inputMode="numeric"
               value={customAmount}
               onChange={(e) => setCustomAmount(e.target.value)}
               placeholder="ml"
@@ -152,8 +153,8 @@ export function WaterProgress({ initialLogs, dailyGoal }: WaterProgressProps) {
                 <span>{log.amount} ml</span>
                 <button
                   onClick={() => deleteLog(log.id)}
-                  className="cursor-pointer opacity-30 group-hover:opacity-100 hover:text-red-400 transition-opacity p-0.5"
-                  aria-label="Remove"
+                  className="cursor-pointer opacity-30 group-hover:opacity-100 hover:text-red-400 transition-opacity duration-150 p-0.5"
+                  aria-label={`Remove ${log.amount}ml`}
                 >
                   <AiOutlineClose className="h-3 w-3" />
                 </button>

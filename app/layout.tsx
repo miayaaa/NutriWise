@@ -58,6 +58,8 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "white" },
     { media: "(prefers-color-scheme: dark)", color: "black" },
@@ -71,12 +73,12 @@ interface RootLayoutProps {
 export default async function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn("antialiased", inter.className)}>
+      <body className={cn("antialiased overflow-x-hidden w-full", inter.className)}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <NextTopLoader color="#22c55e" height={2.5} showSpinner={false} />
           <div
             vaul-drawer-wrapper=""
-            className="flex min-h-screen flex-col bg-background"
+            className="flex min-h-screen w-full flex-col overflow-x-hidden bg-background"
           >
             {children}
           </div>

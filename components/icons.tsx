@@ -20,7 +20,7 @@ import {
 } from "react-icons/bs"
 import { FaRegStar, FaSort, FaUserAlt } from "react-icons/fa"
 import { ImSpinner8, ImStatsBars } from "react-icons/im"
-import { LuSettings } from "react-icons/lu"
+import { LuSettings, LuBrainCircuit } from "react-icons/lu"
 import { MdDeleteForever, MdOutlineLogout } from "react-icons/md"
 import { RxDashboard, RxMixerHorizontal } from "react-icons/rx"
 
@@ -59,6 +59,7 @@ const icons = {
   warning: AiOutlineWarning,
   add: AiOutlinePlus,
   history: BiHistory,
+  coach: LuBrainCircuit,
   signout: MdOutlineLogout,
   calendar: BiCalendar,
   sort: FaSort,

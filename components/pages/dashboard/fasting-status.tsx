@@ -92,12 +92,12 @@ export function FastingStatus({ fastingStart, fastingEnd, todayLogs }: FastingSt
         </div>
 
         {/* Window info */}
-        <div className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
-          <span className="text-muted-foreground">Window: </span>
-          <span className="font-medium">
+        <div className="rounded-lg bg-muted/50 px-3 py-2 text-sm flex flex-wrap gap-x-2 gap-y-1">
+          <span className="text-muted-foreground">Window:</span>
+          <span className="font-medium whitespace-nowrap">
             {formatHour(fastingStart)} – {formatHour(fastingEnd)}
           </span>
-          <span className="text-muted-foreground ml-2">
+          <span className="text-muted-foreground whitespace-nowrap">
             ({windowHours}h eating · {24 - windowHours}h fast)
           </span>
         </div>

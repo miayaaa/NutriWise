@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  button, a, [role="button"] {
+    touch-action: manipulation;
+  }
+
   :root {
     --background: 0 0% 100%;
     --foreground: 150 10% 4%;

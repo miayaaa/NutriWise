@@ -16,73 +16,9 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer"
-import { toast } from "@/components/ui/use-toast"
 import { QuickFoodLog } from "@/components/pages/dashboard/quick-food-log"
+import { WaterQuickLog } from "@/components/pages/dashboard/water-quick-log"
 import { WorkoutLogForm } from "@/components/pages/dashboard/workout-log-form"
-
-const WATER_AMOUNTS = [200, 300, 500, 750]
-
-function WaterQuickLog({ onSuccess }: { onSuccess: () => void }) {
-  const [isAdding, setIsAdding] = React.useState(false)
-  const [custom, setCustom] = React.useState("")
-
-  async function addWater(amount: number) {
-    if (isAdding || amount <= 0) return
-    setIsAdding(true)
-    try {
-      const res = await fetch("/api/water-logs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount }),
-      })
-      if (res.ok) {
-        toast({ description: `+${amount}ml logged.` })
-        onSuccess()
-      }
-    } catch {
-      toast({ title: "Error", description: "Could not log water.", variant: "destructive" })
-    } finally {
-      setIsAdding(false)
-    }
-  }
-
-  return (
-    <div className="px-4 pb-8 space-y-4">
-      <div className="grid grid-cols-4 gap-2">
-        {WATER_AMOUNTS.map((amt) => (
-          <button
-            key={amt}
-            onClick={() => addWater(amt)}
-            disabled={isAdding}
-            className="flex flex-col items-center justify-center rounded-xl border border-border bg-muted/40 py-3 text-sm font-medium transition-colors hover:border-blue-400 hover:text-blue-500 disabled:opacity-50"
-          >
-            <BsDropletFill className="mb-1 h-4 w-4 text-blue-400" />
-            {amt}ml
-          </button>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <input
-          type="number"
-          value={custom}
-          onChange={(e) => setCustom(e.target.value)}
-          placeholder="Custom ml"
-          min={1}
-          max={2000}
-          className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
-          onKeyDown={(e) => { if (e.key === "Enter") addWater(Number(custom)) }}
-        />
-        <button
-          onClick={() => addWater(Number(custom))}
-          disabled={isAdding || !custom}
-          className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          Add
-        </button>
-      </div>
-    </div>
-  )
-}
 
 type LogType = "food" | "water" | "workout"
 
@@ -92,13 +28,15 @@ const LOG_OPTIONS: { type: LogType; label: string; icon: React.ReactNode; color:
   { type: "workout", label: "Log Workout", icon: <BsFire className="h-6 w-6" />,        color: "bg-orange-500" },
 ]
 
+// dashboardLinks.data layout: [Dashboard, History, Coach, Settings]
+// Bottom nav: Dashboard | History | [FAB] | Coach | Settings
+const NAV_LEFT  = [dashboardLinks.data[0], dashboardLinks.data[1]]  // Dashboard, History
+const NAV_RIGHT = [dashboardLinks.data[2], dashboardLinks.data[3]]  // Coach, Settings
+
 export function MobileBottomNav() {
   const path = usePathname()
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [logType, setLogType] = React.useState<LogType | null>(null)
-
-  const [leftItem] = dashboardLinks.data
-  const rightItem = dashboardLinks.data[1]
 
   function openLog(type: LogType) {
     setMenuOpen(false)
@@ -107,11 +45,11 @@ export function MobileBottomNav() {
 
   function NavLink({ item }: { item: (typeof dashboardLinks.data)[number] }) {
     const Icon = Icons[item.icon || "next"]
-    const isActive = path === item.href
+    const isActive = path === item.href || (item.href !== "/dashboard" && path.startsWith(item.href ?? ""))
     return (
-      <Link href={item.href ?? "/"} className="flex flex-1 flex-col items-center gap-1 py-2">
-        <Icon className={cn("h-5 w-5 transition-colors", isActive ? "text-primary" : "text-muted-foreground")} />
-        <span className={cn("text-[10px] transition-colors", isActive ? "font-medium text-primary" : "text-muted-foreground")}>
+      <Link href={item.href ?? "/"} className="flex flex-1 flex-col items-center gap-1 py-2 min-w-0">
+        <Icon className={cn("h-5 w-5 shrink-0 transition-colors", isActive ? "text-primary" : "text-muted-foreground")} />
+        <span className={cn("text-[10px] transition-colors truncate", isActive ? "font-medium text-primary" : "text-muted-foreground")}>
           {item.title}
         </span>
       </Link>
@@ -123,11 +61,14 @@ export function MobileBottomNav() {
   return (
     <>
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-background md:hidden">
-        <div className="flex h-16 items-center justify-around px-2">
-          <NavLink item={leftItem} />
+        <div className="flex h-16 items-center px-1">
+          {/* Left tabs */}
+          {NAV_LEFT.map((item) => (
+            <NavLink key={item.href} item={item} />
+          ))}
 
           {/* Center FAB */}
-          <div className="flex flex-1 flex-col items-center">
+          <div className="flex w-16 shrink-0 flex-col items-center">
             <button
               onClick={() => setMenuOpen((v) => !v)}
               className={cn(
@@ -140,7 +81,10 @@ export function MobileBottomNav() {
             </button>
           </div>
 
-          <NavLink item={rightItem} />
+          {/* Right tabs */}
+          {NAV_RIGHT.map((item) => (
+            <NavLink key={item.href} item={item} />
+          ))}
         </div>
       </nav>
 
@@ -172,11 +116,11 @@ export function MobileBottomNav() {
 
       {/* Food / Workout drawers */}
       <Drawer open={logType === "food" || logType === "workout"} onOpenChange={(o) => { if (!o) setLogType(null) }}>
-        <DrawerContent>
+        <DrawerContent className="max-h-[90dvh]">
           <DrawerHeader>
             <DrawerTitle>{drawerTitle}</DrawerTitle>
           </DrawerHeader>
-          <div className="px-4 pb-8">
+          <div className="overflow-y-auto px-4 pb-8">
             {logType === "food" && <QuickFoodLog onSuccess={() => setLogType(null)} />}
             {logType === "workout" && <WorkoutLogForm onSuccess={() => setLogType(null)} />}
           </div>
@@ -192,7 +136,9 @@ export function MobileBottomNav() {
               <AiOutlineClose className="h-4 w-4" />
             </button>
           </DrawerHeader>
-          <WaterQuickLog onSuccess={() => setLogType(null)} />
+          <div className="px-4 pb-8">
+            <WaterQuickLog onSuccess={() => setLogType(null)} />
+          </div>
         </DrawerContent>
       </Drawer>
     </>
