@@ -1,17 +1,12 @@
-# Iotawise
+# NutriWise
 
-Iotawise is an open-source habit tracking app that lets you track daily habits and monitor your activity streaks and progress with little effort.
-
-![og image](/public/og.jpg)
+NutriWise is a nutrition tracking app that helps you log meals, analyze food with AI, and monitor your dietary habits.
 
 ## Features
 
-- User-friendly Interface
-- Habit/Activity Tracking
-- Activity Streak Monitoring
-- Dashboard Analytics
+- Food logging with AI analysis
+- Dashboard analytics
 - Google Authentication
-- Web Push Notifications (coming soon)
 - Cross-platform Support (PWA)
 
 ## Stack
@@ -30,7 +25,7 @@ Iotawise is an open-source habit tracking app that lets you track daily habits a
 1. Clone the repository.
 
 ```bash
-pnpm dlx degit redpangilinan/iotawise
+git clone https://github.com/miayaaa/NutriWise.git
 ```
 
 2. Install dependencies using pnpm.
@@ -39,7 +34,7 @@ pnpm dlx degit redpangilinan/iotawise
 pnpm install
 ```
 
-3. Copy `env.example` to `env.local` and update the variables.
+3. Copy `.env.example` to `.env.local` and update the variables.
 
 ```bash
 cp .env.example .env.local
@@ -56,7 +51,3 @@ pnpm postinstall
 ```bash
 pnpm dev
 ```
-
-## License
-
-This project is licensed under the [MIT License](https://opensource.org/licenses/MIT) - see the [LICENSE](LICENSE) file for details.
