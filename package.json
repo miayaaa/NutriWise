@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:checked": "pnpm db:check && next dev",
-    "build": "next build",
+    "build": "prisma migrate deploy && next build",
     "turbo": "next dev --turbo",
     "start": "next start",
     "lint": "next lint",
