@@ -30,9 +30,9 @@ interface UserCalorieGoalFormProps {
 
 // BMR presets (rough estimates) shown as helper text
 const PRESETS = [
-  { label: "Light diet (女性减脂)", value: 1400 },
-  { label: "Maintain weight (普通)", value: 1800 },
-  { label: "Active male (男性增肌)", value: 2400 },
+  { label: "Light cut", value: 1400 },
+  { label: "Maintenance", value: 1800 },
+  { label: "Active gain", value: 2400 },
 ]
 
 export function UserCalorieGoalForm({ user }: UserCalorieGoalFormProps) {

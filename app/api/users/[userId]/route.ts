@@ -3,7 +3,13 @@ import { z } from "zod"
 
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { userFastingSchema, userNameSchema, userProfileSchema, userWaterGoalSchema } from "@/lib/validations/user"
+import {
+  userBodyMetricsSchema,
+  userFastingSchema,
+  userNameSchema,
+  userProfileSchema,
+  userWaterGoalSchema,
+} from "@/lib/validations/user"
 
 const routeContextSchema = z.object({
   params: z.object({
@@ -54,6 +60,20 @@ export async function PATCH(
           fastingEnabled: payload.fastingEnabled,
           fastingStart: payload.fastingStart,
           fastingEnd: payload.fastingEnd,
+          updatedAt: new Date(),
+        },
+      })
+      return new Response(null, { status: 200 })
+    }
+
+    // Body metrics update
+    if (body.heightCm !== undefined || body.weightGoalKg !== undefined) {
+      const payload = userBodyMetricsSchema.parse(body)
+      await db.user.update({
+        where: { id: session.user.id },
+        data: {
+          heightCm: payload.heightCm ?? null,
+          weightGoalKg: payload.weightGoalKg ?? null,
           updatedAt: new Date(),
         },
       })

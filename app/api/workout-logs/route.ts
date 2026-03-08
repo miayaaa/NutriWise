@@ -61,32 +61,17 @@ export async function POST(req: Request) {
       body.analysisContext
     )
 
-    let log
-    try {
-      log = await db.workoutLog.create({
-        data: {
-          userId: session.user.id,
-          type: body.type,
-          durationMin: body.durationMin,
-          details: body.analysisContext as Prisma.InputJsonValue | undefined,
-          notes: body.notes,
-          aiComment,
-        },
-        select: { id: true, type: true, durationMin: true, details: true, notes: true, aiComment: true, date: true },
-      })
-    } catch {
-      const legacyLog = await db.workoutLog.create({
-        data: {
-          userId: session.user.id,
-          type: body.type,
-          durationMin: body.durationMin,
-          notes: body.notes,
-          aiComment,
-        },
-        select: { id: true, type: true, durationMin: true, notes: true, aiComment: true, date: true },
-      })
-      log = { ...legacyLog, details: null }
-    }
+    const log = await db.workoutLog.create({
+      data: {
+        userId: session.user.id,
+        type: body.type,
+        durationMin: body.durationMin,
+        details: body.analysisContext as Prisma.InputJsonValue | undefined,
+        notes: body.notes,
+        aiComment,
+      },
+      select: { id: true, type: true, durationMin: true, details: true, notes: true, aiComment: true, date: true },
+    })
     return Response.json(log)
   } catch (error) {
     if (error instanceof z.ZodError) return new Response(JSON.stringify(error.issues), { status: 422 })

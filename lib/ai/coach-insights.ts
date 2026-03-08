@@ -21,6 +21,13 @@ export interface CoachInsightMetrics {
     totalDurationMin: number
     avgDurationMin: number
   }
+  weight: {
+    logCount: number
+    currentKg: number | null
+    avgKg: number | null
+    changeKg: number
+    goalKg: number | null
+  }
   fasting: {
     enabled: boolean
     startHour: number
@@ -39,6 +46,10 @@ function fallbackCoachInsight(metrics: CoachInsightMetrics): CoachInsightResult 
   const hydrationPct = metrics.hydration.dailyGoalMl > 0
     ? Math.min((metrics.hydration.avgWaterMlPerDay / metrics.hydration.dailyGoalMl) * 100, 100)
     : 0
+  const weightTrendText =
+    metrics.weight.logCount >= 2
+      ? `Weight trend ${metrics.weight.changeKg > 0 ? "+" : ""}${metrics.weight.changeKg.toFixed(1)} kg.`
+      : "Weight trend needs more logs."
   const workoutDaysScore = Math.min(metrics.workout.sessionCount * 10, 40)
   const hydrationScore = Math.round(hydrationPct * 0.3)
   const nutritionScore = metrics.nutrition.mealCount > 0 ? 30 : 10
@@ -53,7 +64,7 @@ function fallbackCoachInsight(metrics: CoachInsightMetrics): CoachInsightResult 
   ]
 
   return {
-    summary: `You logged ${metrics.nutrition.mealCount} meals, ${metrics.workout.sessionCount} workouts, and averaged ${Math.round(metrics.hydration.avgWaterMlPerDay)} ml water/day over ${metrics.period.days} days.`,
+    summary: `You logged ${metrics.nutrition.mealCount} meals, ${metrics.workout.sessionCount} workouts, and averaged ${Math.round(metrics.hydration.avgWaterMlPerDay)} ml water/day over ${metrics.period.days} days. ${weightTrendText}`,
     coachComment: "Good momentum overall. Keep the basics consistent and make one small measurable improvement this week.",
     actionItems,
     score,

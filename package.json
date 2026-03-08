@@ -4,14 +4,17 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:checked": "pnpm db:check && next dev",
     "build": "next build",
     "turbo": "next dev --turbo",
     "start": "next start",
     "lint": "next lint",
     "preview": "next build && next start",
+    "db:check": "prisma migrate status",
     "postinstall": "prisma generate",
     "test": "jest --watch",
     "test:ci": "jest --ci",
+    "ci:verify": "pnpm db:check && pnpm lint && pnpm test:ci",
     "format": "pnpm prettier . --write",
     "format:check": "pnpm prettier . --check",
     "migrate": "bash scripts/migrate.sh"

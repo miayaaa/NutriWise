@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/session"
 import { Shell } from "@/components/layout/shell"
 import { DashboardHeader } from "@/components/pages/dashboard/dashboard-header"
 import { AppearanceForm } from "@/components/settings/appearance-form"
+import { UserBodyMetricsForm } from "@/components/user/user-body-metrics-form"
 import { UserCalorieGoalForm } from "@/components/user/user-calorie-goal-form"
 import { UserFastingForm } from "@/components/user/user-fasting-form"
 import { UserNameForm } from "@/components/user/user-name-form"
@@ -26,7 +27,15 @@ export default async function SettingsPage() {
 
   const dbUser = await db.user.findUnique({
     where: { id: user.id },
-    select: { dailyCalorieGoal: true, dailyWaterGoal: true, fastingEnabled: true, fastingStart: true, fastingEnd: true },
+    select: {
+      dailyCalorieGoal: true,
+      dailyWaterGoal: true,
+      heightCm: true,
+      weightGoalKg: true,
+      fastingEnabled: true,
+      fastingStart: true,
+      fastingEnd: true,
+    },
   })
 
   return (
@@ -42,6 +51,13 @@ export default async function SettingsPage() {
         />
         <UserWaterGoalForm
           user={{ id: user.id, dailyWaterGoal: dbUser?.dailyWaterGoal ?? 2000 }}
+        />
+        <UserBodyMetricsForm
+          user={{
+            id: user.id,
+            heightCm: dbUser?.heightCm ?? null,
+            weightGoalKg: dbUser?.weightGoalKg ?? null,
+          }}
         />
         <UserFastingForm
           user={{

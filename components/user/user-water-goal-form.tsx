@@ -20,9 +20,9 @@ import { Icons } from "@/components/icons"
 type FormData = z.infer<typeof userWaterGoalSchema>
 
 const PRESETS = [
-  { label: "轻量 (久坐)", value: 1500 },
-  { label: "标准", value: 2000 },
-  { label: "运动量大", value: 2500 },
+  { label: "Light activity", value: 1500 },
+  { label: "Standard", value: 2000 },
+  { label: "High activity", value: 2500 },
 ]
 
 export function UserWaterGoalForm({ user }: { user: { id: string; dailyWaterGoal: number } }) {

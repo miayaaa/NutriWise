@@ -46,8 +46,22 @@ cp .env.example .env.local
 pnpm postinstall
 ```
 
-5. Start the development server.
+5. Check migration status (recommended).
 
 ```bash
-pnpm dev
+pnpm db:check
+```
+
+6. Start the development server.
+
+```bash
+pnpm dev:checked
+```
+
+## CI Verification Command
+
+Run the same checks used for CI verification:
+
+```bash
+pnpm ci:verify
 ```

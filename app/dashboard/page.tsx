@@ -16,6 +16,7 @@ import { QuickFoodLog } from "@/components/pages/dashboard/quick-food-log"
 import { TodayIntake } from "@/components/pages/dashboard/today-intake"
 import { TodayWorkouts } from "@/components/pages/dashboard/today-workouts"
 import { WaterProgress } from "@/components/pages/dashboard/water-progress"
+import { WeightTracker } from "@/components/pages/dashboard/weight-tracker"
 import { WorkoutLogLauncher } from "@/components/pages/dashboard/workout-log-launcher"
 
 export const metadata: Metadata = {
@@ -32,13 +33,18 @@ export default async function Dashboard() {
   const todayEnd = new Date()
   todayEnd.setHours(23, 59, 59, 999)
 
-  const [todayMeals, dbUser, history, todayWater, todayWorkouts, coachInsight] = await Promise.all([
+  const ninetyDaysAgo = new Date()
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 89)
+  ninetyDaysAgo.setHours(0, 0, 0, 0)
+
+  const [todayMeals, dbUser, history, todayWater, todayWorkouts, coachInsight, weightLogs] = await Promise.all([
     getTodayFoodLogs(user.id),
     db.user.findUnique({
       where: { id: user.id },
       select: {
         dailyCalorieGoal: true,
         dailyWaterGoal: true,
+        weightGoalKg: true,
         fastingEnabled: true,
         fastingStart: true,
         fastingEnd: true,
@@ -50,42 +56,17 @@ export default async function Dashboard() {
       select: { id: true, amount: true, date: true },
       orderBy: { date: "asc" },
     }),
-    (async () => {
-      try {
-        return await db.workoutLog.findMany({
-          where: { userId: user.id, date: { gte: today, lte: todayEnd } },
-          select: { id: true, type: true, durationMin: true, details: true, notes: true, aiComment: true },
-          orderBy: { date: "asc" },
-        })
-      } catch {
-        const legacyLogs = await db.workoutLog.findMany({
-          where: { userId: user.id, date: { gte: today, lte: todayEnd } },
-          select: { id: true, type: true, durationMin: true, notes: true, aiComment: true },
-          orderBy: { date: "asc" },
-        })
-        return legacyLogs.map((log) => ({ ...log, details: null }))
-      }
-    })(),
-    (async () => {
-      try {
-        return await getCoachInsight(user.id, "7d")
-      } catch {
-        return {
-          rangeType: "7d" as const,
-          startDate: new Date().toISOString(),
-          endDate: new Date().toISOString(),
-          summary: "Track a few days of logs to unlock personalized coach insights.",
-          coachComment: "Consistency first. Once your logs stabilize, the coach feedback will become more precise.",
-          actionItems: [
-            "Log meals consistently for the next 7 days.",
-            "Log water intake daily against your goal.",
-            "Record at least 3 workout sessions this week.",
-          ],
-          score: 60,
-          generatedAt: new Date().toISOString(),
-        }
-      }
-    })(),
+    db.workoutLog.findMany({
+      where: { userId: user.id, date: { gte: today, lte: todayEnd } },
+      select: { id: true, type: true, durationMin: true, details: true, notes: true, aiComment: true },
+      orderBy: { date: "asc" },
+    }),
+    getCoachInsight(user.id, "7d"),
+    db.weightLog.findMany({
+      where: { userId: user.id, date: { gte: ninetyDaysAgo } },
+      select: { id: true, weightKg: true, date: true },
+      orderBy: { date: "asc" },
+    }),
   ])
 
   return (
@@ -121,12 +102,16 @@ export default async function Dashboard() {
       {/* Today's workouts */}
       <TodayWorkouts workouts={todayWorkouts} />
 
-      {/* Today summary — 2 col on md+ */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      {/* Today summary — 3 cards on md+ */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <TodayIntake meals={todayMeals} dailyCalorieGoal={dbUser?.dailyCalorieGoal} />
         <WaterProgress
           initialLogs={todayWater.map((l) => ({ ...l, date: l.date.toISOString() }))}
           dailyGoal={dbUser?.dailyWaterGoal ?? 2000}
+        />
+        <WeightTracker
+          initialLogs={weightLogs.map((l) => ({ ...l, date: l.date.toISOString() }))}
+          weightGoalKg={dbUser?.weightGoalKg ?? null}
         />
       </div>
 

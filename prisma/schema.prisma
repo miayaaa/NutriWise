@@ -47,6 +47,8 @@ model User {
   image         String?
   dailyCalorieGoal Int?      @map(name: "daily_calorie_goal")
   dailyWaterGoal   Int       @default(2000) @map(name: "daily_water_goal")
+  heightCm         Int?      @map(name: "height_cm")
+  weightGoalKg     Float?    @map(name: "weight_goal_kg")
   fastingEnabled   Boolean   @default(false) @map(name: "fasting_enabled")
   fastingStart     Int       @default(12) @map(name: "fasting_start")
   fastingEnd       Int       @default(20) @map(name: "fasting_end")
@@ -58,6 +60,7 @@ model User {
   activities  Activity[]
   foodLogs    FoodLog[]
   waterLogs   WaterLog[]
+  weightLogs  WeightLog[]
   workoutLogs WorkoutLog[]
   coachInsights CoachInsight[]
 
@@ -135,6 +138,16 @@ model WaterLog {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map(name: "water_logs")
+}
+
+model WeightLog {
+  id       String   @id @default(cuid())
+  userId   String   @map(name: "user_id")
+  weightKg Float    @map(name: "weight_kg")
+  date     DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map(name: "weight_logs")
 }
 
 model WorkoutLog {

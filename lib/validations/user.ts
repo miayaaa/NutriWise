@@ -17,3 +17,8 @@ export const userFastingSchema = z.object({
   fastingStart: z.number().int().min(0).max(23),
   fastingEnd: z.number().int().min(0).max(23),
 })
+
+export const userBodyMetricsSchema = z.object({
+  heightCm: z.number().int().min(80).max(260).nullable().optional(),
+  weightGoalKg: z.number().min(25).max(350).nullable().optional(),
+})

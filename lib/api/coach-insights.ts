@@ -60,7 +60,7 @@ async function aggregateMetrics(
 ): Promise<CoachInsightMetrics> {
   const { startDate, endDate, days } = getRangeWindow(rangeType)
 
-  const [foodAgg, waterAgg, workoutAgg, user] = await Promise.all([
+  const [foodAgg, waterAgg, workoutAgg, user, weightLogs] = await Promise.all([
     db.foodLog.aggregate({
       where: { userId, date: { gte: startDate, lte: endDate } },
       _count: { _all: true },
@@ -78,7 +78,18 @@ async function aggregateMetrics(
     }),
     db.user.findUnique({
       where: { id: userId },
-      select: { dailyWaterGoal: true, fastingEnabled: true, fastingStart: true, fastingEnd: true },
+      select: {
+        dailyWaterGoal: true,
+        weightGoalKg: true,
+        fastingEnabled: true,
+        fastingStart: true,
+        fastingEnd: true,
+      },
+    }),
+    db.weightLog.findMany({
+      where: { userId, date: { gte: startDate, lte: endDate } },
+      select: { weightKg: true, date: true },
+      orderBy: { date: "asc" },
     }),
   ])
 
@@ -90,6 +101,14 @@ async function aggregateMetrics(
   const totalWaterMl = toNumber(waterAgg._sum.amount)
   const sessionCount = workoutAgg._count._all
   const totalDurationMin = toNumber(workoutAgg._sum.durationMin)
+  const weightCount = weightLogs.length
+  const currentWeightKg = weightCount > 0 ? weightLogs[weightCount - 1].weightKg : null
+  const avgWeightKg = weightCount > 0
+    ? Math.round((weightLogs.reduce((sum, l) => sum + l.weightKg, 0) / weightCount) * 10) / 10
+    : null
+  const weightChangeKg = weightCount >= 2
+    ? Math.round((weightLogs[weightCount - 1].weightKg - weightLogs[0].weightKg) * 10) / 10
+    : 0
 
   return {
     rangeType,
@@ -116,6 +135,13 @@ async function aggregateMetrics(
       totalDurationMin,
       avgDurationMin: sessionCount > 0 ? Math.round(totalDurationMin / sessionCount) : 0,
     },
+    weight: {
+      logCount: weightCount,
+      currentKg: currentWeightKg,
+      avgKg: avgWeightKg,
+      changeKg: weightChangeKg,
+      goalKg: user?.weightGoalKg ?? null,
+    },
     fasting: {
       enabled: user?.fastingEnabled ?? false,
       startHour: user?.fastingStart ?? 12,
@@ -128,68 +154,51 @@ export async function getCoachInsight(userId: string, rangeType: CoachRangeType)
   const { startDate, endDate } = getRangeWindow(rangeType)
   const freshnessCutoff = new Date(Date.now() - 12 * 60 * 60 * 1000)
 
-  try {
-    const cached = await db.coachInsight.findUnique({
-      where: {
-        userId_rangeType_startDate_endDate: {
-          userId,
-          rangeType,
-          startDate,
-          endDate,
-        },
+  const cached = await db.coachInsight.findUnique({
+    where: {
+      userId_rangeType_startDate_endDate: {
+        userId,
+        rangeType,
+        startDate,
+        endDate,
       },
-    })
+    },
+  })
 
-    if (cached && cached.generatedAt >= freshnessCutoff) {
-      return serializeInsight(cached)
-    }
-  } catch {
-    // Continue without cache if table/migration is unavailable.
+  if (cached && cached.generatedAt >= freshnessCutoff) {
+    return serializeInsight(cached)
   }
 
   const metrics = await aggregateMetrics(userId, rangeType)
   const generated: CoachInsightResult = await generateCoachInsight(metrics)
 
-  try {
-    const saved = await db.coachInsight.upsert({
-      where: {
-        userId_rangeType_startDate_endDate: {
-          userId,
-          rangeType,
-          startDate,
-          endDate,
-        },
-      },
-      create: {
+  const saved = await db.coachInsight.upsert({
+    where: {
+      userId_rangeType_startDate_endDate: {
         userId,
         rangeType,
         startDate,
         endDate,
-        summary: generated.summary,
-        coachComment: generated.coachComment,
-        actionItems: generated.actionItems as Prisma.InputJsonValue,
-        score: generated.score,
       },
-      update: {
-        summary: generated.summary,
-        coachComment: generated.coachComment,
-        actionItems: generated.actionItems as Prisma.InputJsonValue,
-        score: generated.score,
-        generatedAt: new Date(),
-      },
-    })
-
-    return serializeInsight(saved)
-  } catch {
-    return {
+    },
+    create: {
+      userId,
       rangeType,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
+      startDate,
+      endDate,
       summary: generated.summary,
       coachComment: generated.coachComment,
-      actionItems: generated.actionItems,
+      actionItems: generated.actionItems as Prisma.InputJsonValue,
       score: generated.score,
-      generatedAt: new Date().toISOString(),
-    }
-  }
+    },
+    update: {
+      summary: generated.summary,
+      coachComment: generated.coachComment,
+      actionItems: generated.actionItems as Prisma.InputJsonValue,
+      score: generated.score,
+      generatedAt: new Date(),
+    },
+  })
+
+  return serializeInsight(saved)
 }
