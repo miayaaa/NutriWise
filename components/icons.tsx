@@ -47,6 +47,7 @@ const icons = {
   // Navigation
   back: BsChevronLeft,
   next: BsChevronRight,
+  arrowRight: BsChevronRight,
   up: BsChevronUp,
   down: BsChevronDown,
   close: AiOutlineClose,
