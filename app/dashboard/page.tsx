@@ -6,16 +6,15 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { getCurrentUser } from "@/lib/session"
 import { Shell } from "@/components/layout/shell"
-import { DashboardHeader } from "@/components/pages/dashboard/dashboard-header"
 import { FastingStatus } from "@/components/pages/dashboard/fasting-status"
 import { QuickLogCard } from "@/components/pages/dashboard/quick-log-card"
 import { TodayIntake } from "@/components/pages/dashboard/today-intake"
+import { TodayWorkouts } from "@/components/pages/dashboard/today-workouts"
 import { WaterProgress } from "@/components/pages/dashboard/water-progress"
 import { WeightTracker } from "@/components/pages/dashboard/weight-tracker"
 
 export const metadata: Metadata = {
   title: "Dashboard",
-  description: "Monitor your progress.",
 }
 
 export default async function Dashboard() {
@@ -31,7 +30,7 @@ export default async function Dashboard() {
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 89)
   ninetyDaysAgo.setHours(0, 0, 0, 0)
 
-  const [todayMeals, dbUser, todayWater, weightLogs] = await Promise.all([
+  const [todayMeals, dbUser, todayWater, weightLogs, todayWorkouts] = await Promise.all([
     getTodayFoodLogs(user.id),
     db.user.findUnique({
       where: { id: user.id },
@@ -54,12 +53,15 @@ export default async function Dashboard() {
       select: { id: true, weightKg: true, date: true },
       orderBy: { date: "asc" },
     }),
+    db.workoutLog.findMany({
+      where: { userId: user.id, date: { gte: today, lte: todayEnd } },
+      select: { id: true, type: true, durationMin: true, details: true, notes: true, aiComment: true },
+      orderBy: { date: "asc" },
+    }),
   ])
 
   return (
     <Shell className="w-full px-4 md:px-0">
-      <DashboardHeader heading="Dashboard" text="Monitor your progress." />
-
       {/* Quick log — food / water / workout dialogs */}
       <QuickLogCard />
 
@@ -74,7 +76,10 @@ export default async function Dashboard() {
 
       {/* Today summary — 3 cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <TodayIntake meals={todayMeals} dailyCalorieGoal={dbUser?.dailyCalorieGoal} />
+        <TodayIntake
+          meals={todayMeals.map((m) => ({ ...m, date: m.date.toISOString() }))}
+          dailyCalorieGoal={dbUser?.dailyCalorieGoal}
+        />
         <WaterProgress
           initialLogs={todayWater.map((l) => ({ ...l, date: l.date.toISOString() }))}
           dailyGoal={dbUser?.dailyWaterGoal ?? 2000}
@@ -83,6 +88,7 @@ export default async function Dashboard() {
           initialLogs={weightLogs.map((l) => ({ ...l, date: l.date.toISOString() }))}
           weightGoalKg={dbUser?.weightGoalKg ?? null}
         />
+        <TodayWorkouts workouts={todayWorkouts} />
       </div>
     </Shell>
   )

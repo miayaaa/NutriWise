@@ -21,14 +21,14 @@ export const dashboardLinks: Navigation = {
       icon: "dashboard",
     },
     {
-      title: "History",
-      href: "/dashboard/history",
-      icon: "history",
-    },
-    {
       title: "Coach",
       href: "/dashboard/coach",
       icon: "coach",
+    },
+    {
+      title: "History",
+      href: "/dashboard/history",
+      icon: "history",
     },
     {
       title: "Settings",

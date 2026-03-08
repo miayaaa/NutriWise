@@ -28,7 +28,7 @@ const LOG_OPTIONS: { type: LogType; label: string; icon: React.ReactNode; color:
   { type: "workout", label: "Log Workout", icon: <BsFire className="h-6 w-6" />,        color: "bg-orange-500" },
 ]
 
-// dashboardLinks.data layout: [Dashboard, History, Coach, Settings]
+// dashboardLinks.data layout: [Dashboard, Coach, History, Settings]
 // Bottom nav: Dashboard | History | [FAB] | Coach | Settings
 const NAV_LEFT  = [dashboardLinks.data[0], dashboardLinks.data[1]]  // Dashboard, History
 const NAV_RIGHT = [dashboardLinks.data[2], dashboardLinks.data[3]]  // Coach, Settings
