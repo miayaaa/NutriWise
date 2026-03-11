@@ -21,7 +21,7 @@ import {
 import { FaRegStar, FaSort, FaUserAlt } from "react-icons/fa"
 import { ImSpinner8, ImStatsBars } from "react-icons/im"
 import { LuSettings, LuBrainCircuit } from "react-icons/lu"
-import { MdDeleteForever, MdOutlineLogout } from "react-icons/md"
+import { MdDeleteForever, MdOutlineLogout, MdOutlineEdit } from "react-icons/md"
 import { RxDashboard, RxMixerHorizontal } from "react-icons/rx"
 
 export type IconKeys = keyof typeof icons
@@ -54,6 +54,7 @@ const icons = {
 
   // Common
   trash: MdDeleteForever,
+  edit: MdOutlineEdit,
   spinner: ImSpinner8,
   userAlt: FaUserAlt,
   ellipsis: AiOutlineEllipsis,
