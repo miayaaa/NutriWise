@@ -60,11 +60,15 @@ async function aggregateMetrics(
 ): Promise<CoachInsightMetrics> {
   const { startDate, endDate, days } = getRangeWindow(rangeType)
 
-  const [foodAgg, waterAgg, workoutLogs, user, weightLogs] = await Promise.all([
+  const [foodAgg, foodLogDates, waterAgg, workoutLogs, user, weightLogs] = await Promise.all([
     db.foodLog.aggregate({
       where: { userId, date: { gte: startDate, lte: endDate } },
       _count: { _all: true },
       _sum: { aiCalories: true, protein: true, carbs: true, fat: true },
+    }),
+    db.foodLog.findMany({
+      where: { userId, date: { gte: startDate, lte: endDate } },
+      select: { localDate: true, date: true, aiCalories: true },
     }),
     db.waterLog.aggregate({
       where: { userId, date: { gte: startDate, lte: endDate } },
@@ -79,6 +83,7 @@ async function aggregateMetrics(
     db.user.findUnique({
       where: { id: userId },
       select: {
+        dailyCalorieGoal: true,
         dailyWaterGoal: true,
         weightGoalKg: true,
         fitnessGoal: true,
@@ -145,6 +150,21 @@ async function aggregateMetrics(
     ? Math.round((weightLogs[weightCount - 1].weightKg - weightLogs[0].weightKg) * 10) / 10
     : 0
 
+  // BMR (Mifflin-St Jeor)
+  let bmrKcal: number | null = null
+  if (user?.age && user?.heightCm && currentWeightKg && user?.gender) {
+    bmrKcal = Math.round(
+      user.gender === "female"
+        ? 10 * currentWeightKg + 6.25 * user.heightCm - 5 * user.age - 161
+        : 10 * currentWeightKg + 6.25 * user.heightCm - 5 * user.age + 5
+    )
+  }
+
+  // Days with at least one meal logged (consistency)
+  const loggedDays = new Set(
+    foodLogDates.map((f) => f.localDate ?? f.date.toISOString().split("T")[0])
+  ).size
+
   return {
     rangeType,
     period: {
@@ -154,11 +174,17 @@ async function aggregateMetrics(
     },
     nutrition: {
       mealCount,
+      daysLogged: loggedDays,
+      daysWithNoLog: days - loggedDays,
+      avgMealsPerDay: Math.round((mealCount / days) * 10) / 10,
       totalCalories: Math.round(totalCalories),
+      avgCaloriesPerDay: Math.round(totalCalories / days),
+      avgCaloriesPerLoggedDay: loggedDays > 0 ? Math.round(totalCalories / loggedDays) : 0,
+      dailyCalorieGoal: user?.dailyCalorieGoal ?? null,
       avgCaloriesPerMeal: mealCount > 0 ? Math.round(totalCalories / mealCount) : 0,
-      avgProtein: mealCount > 0 ? Math.round((totalProtein / mealCount) * 10) / 10 : 0,
-      avgCarbs: mealCount > 0 ? Math.round((totalCarbs / mealCount) * 10) / 10 : 0,
-      avgFat: mealCount > 0 ? Math.round((totalFat / mealCount) * 10) / 10 : 0,
+      avgProteinPerDay: Math.round((totalProtein / days) * 10) / 10,
+      avgCarbsPerDay: Math.round((totalCarbs / days) * 10) / 10,
+      avgFatPerDay: Math.round((totalFat / days) * 10) / 10,
     },
     hydration: {
       totalWaterMl,
@@ -183,6 +209,13 @@ async function aggregateMetrics(
       enabled: user?.fastingEnabled ?? false,
       startHour: user?.fastingStart ?? 12,
       endHour: user?.fastingEnd ?? 20,
+    },
+    profile: {
+      age: user?.age ?? null,
+      gender: user?.gender ?? null,
+      heightCm: user?.heightCm ?? null,
+      bmrKcal,
+      tdeeKcal: bmrKcal ? Math.round(bmrKcal * 1.375) : null,
     },
   }
 }

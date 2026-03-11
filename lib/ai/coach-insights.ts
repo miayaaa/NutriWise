@@ -6,11 +6,24 @@ export interface CoachInsightMetrics {
   fitnessGoal: string | null
   nutrition: {
     mealCount: number
+    daysLogged: number
+    daysWithNoLog: number
+    avgMealsPerDay: number
     totalCalories: number
+    avgCaloriesPerDay: number
+    avgCaloriesPerLoggedDay: number
+    dailyCalorieGoal: number | null
     avgCaloriesPerMeal: number
-    avgProtein: number
-    avgCarbs: number
-    avgFat: number
+    avgProteinPerDay: number
+    avgCarbsPerDay: number
+    avgFatPerDay: number
+  }
+  profile: {
+    age: number | null
+    gender: string | null
+    heightCm: number | null
+    bmrKcal: number | null
+    tdeeKcal: number | null
   }
   hydration: {
     totalWaterMl: number
@@ -65,6 +78,12 @@ function fallbackCoachInsight(metrics: CoachInsightMetrics): CoachInsightResult 
   const score = Math.max(20, Math.min(100, workoutDaysScore + hydrationScore + nutritionScore))
 
   const goal = metrics.fitnessGoal
+  const bodyWeightKg = metrics.weight.currentKg ?? 70
+  const proteinTarget = Math.round(bodyWeightKg * (goal === "fat_loss" ? 1.8 : 2.0))
+  const caloireTarget = metrics.nutrition.dailyCalorieGoal
+    ?? metrics.profile.tdeeKcal
+    ?? Math.round(bodyWeightKg * (goal === "fat_loss" ? 26 : 33))
+
   const actionItems = [
     `Keep hydration above ${Math.round(metrics.hydration.dailyGoalMl * 0.9)} ml/day.`,
     metrics.workout.sessionCount >= 3
@@ -77,14 +96,14 @@ function fallbackCoachInsight(metrics: CoachInsightMetrics): CoachInsightResult 
       ? "Target 4 sessions: 2 strength + 2 cardio. Short sessions count."
       : "Add at least 3 workout sessions. Consistency beats intensity early on.",
     goal === "muscle_gain"
-      ? `Protein target: ${Math.round((metrics.weight.currentKg ?? 70) * 2.0)}g/day. Prioritize it at every meal.`
+      ? `Protein target: ${proteinTarget}g/day (2g/kg). Prioritize it at every meal.`
       : goal === "fat_loss"
-      ? `Keep daily calories around ${Math.round((metrics.weight.currentKg ?? 70) * 26)} kcal and protein high to preserve muscle.`
-      : "Aim for balanced macros: 30% protein, 40% carbs, 30% fat per meal.",
+      ? `Keep daily calories around ${caloireTarget} kcal and hit ${proteinTarget}g protein/day to preserve muscle.`
+      : `Aim for ${proteinTarget}g protein/day and ~${caloireTarget} kcal. Balance macros: 30% protein, 40% carbs, 30% fat.`,
   ]
 
   return {
-    summary: `You logged ${metrics.nutrition.mealCount} meals, ${metrics.workout.sessionCount} workouts, and averaged ${Math.round(metrics.hydration.avgWaterMlPerDay)} ml water/day over ${metrics.period.days} days. ${weightTrendText}`,
+    summary: `Over ${metrics.period.days} days: ${metrics.nutrition.mealCount} meals (avg ${metrics.nutrition.avgMealsPerDay}/day), ${metrics.workout.sessionCount} workouts, ${Math.round(metrics.hydration.avgWaterMlPerDay)} ml water/day avg. ${weightTrendText}`,
     coachComment: goal
       ? `Coaching for ${GOAL_LABELS[goal] ?? goal}: keep the basics consistent and make one measurable improvement this week.`
       : "Good momentum overall. Keep the basics consistent and make one small measurable improvement this week.",
@@ -112,8 +131,12 @@ export async function generateCoachInsight(
           content: `You are an expert personal trainer and sports nutritionist. Be direct, specific, and professional — like a real coach, not a chatbot. Do not be vague or overly cautious.
 
 User's fitness goal: ${metrics.fitnessGoal ? GOAL_LABELS[metrics.fitnessGoal] ?? metrics.fitnessGoal : "Not set — give general advice"}
+User profile: age=${metrics.profile.age ?? "?"}, gender=${metrics.profile.gender ?? "?"}, height=${metrics.profile.heightCm ? `${metrics.profile.heightCm}cm` : "?"}, BMR=${metrics.profile.bmrKcal ? `~${metrics.profile.bmrKcal} kcal/day` : "unknown"}, TDEE estimate=${metrics.profile.tdeeKcal ? `~${metrics.profile.tdeeKcal} kcal/day (light activity)` : "unknown"}
+Intermittent fasting: ${metrics.fasting.enabled ? `YES — eating window ${metrics.fasting.startHour}:00–${metrics.fasting.endHour}:00 (${metrics.fasting.endHour - metrics.fasting.startHour}h eating / ${24 - (metrics.fasting.endHour - metrics.fasting.startHour)}h fast)` : "Not enabled"}
 
-Data (${metrics.period.days}-day window):
+Data (${metrics.period.days}-day window — all totals are across the FULL window):
+IMPORTANT: The user logged food on ${metrics.nutrition.daysLogged} of ${metrics.period.days} days (missed ${metrics.nutrition.daysWithNoLog} days). avgMealsPerDay=${metrics.nutrition.avgMealsPerDay}. avgCaloriesPerLoggedDay=${metrics.nutrition.avgCaloriesPerLoggedDay} kcal. dailyCalorieGoal=${metrics.nutrition.dailyCalorieGoal ?? "not set"}.
+Do NOT say the user ate ${metrics.nutrition.mealCount} meals in one day — that is a ${metrics.period.days}-day total.
 ${JSON.stringify(metrics, null, 0)}
 
 Analyze the data and return ONLY valid JSON, no markdown:
@@ -127,6 +150,7 @@ Rules:
 - For maintenance: balance, consistency, avoid overtraining
 - If workout sessions are missing or low, say so directly — "You only trained X times. That is not enough for [goal]."
 - If specific exercises are logged (e.g. bench press 60kg), reference them: "Your bench press weight looks low for muscle gain — aim for 3x5 at RPE 8"
+- If intermittent fasting is enabled, factor meal timing into advice (e.g. front-loading protein within the eating window, pre/post-workout nutrition within the window)
 - Score reflects goal achievement, not just showing up
 - No filler phrases like "Great job" unless truly warranted
 - English only, no extra keys`,
