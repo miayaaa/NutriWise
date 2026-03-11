@@ -1,3 +1,5 @@
+"use client"
+
 import type { getFoodHistory } from "@/lib/api/history"
 
 type HistoryData = Awaited<ReturnType<typeof getFoodHistory>>
@@ -20,6 +22,27 @@ function MacroChips({ protein, carbs, fat }: { protein: number; carbs: number; f
   )
 }
 
+function LocalTime({ dateIso }: { dateIso: string }) {
+  const t = new Date(dateIso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  return <span className="shrink-0 text-xs text-muted-foreground/60 tabular-nums">{t}</span>
+}
+
+function getDateLabel(date: string) {
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`
+  const base = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(date + "T12:00:00"))
+  if (date === todayStr) return `Today · ${base}`
+  if (date === yesterdayStr) return `Yesterday · ${base}`
+  return base
+}
+
 export function FoodHistoryView({ history }: { history: HistoryData }) {
   if (history.length === 0) {
     return (
@@ -33,11 +56,7 @@ export function FoodHistoryView({ history }: { history: HistoryData }) {
   return (
     <div className="space-y-4">
       {history.map(({ date, meals, totalCalories, totalProtein, totalCarbs, totalFat }) => {
-        const dateLabel = new Intl.DateTimeFormat("en-US", {
-          weekday: "long",
-          month: "short",
-          day: "numeric",
-        }).format(new Date(date + "T12:00:00"))
+        const dateLabel = getDateLabel(date)
 
         const grouped = meals.reduce<Record<string, typeof meals>>((acc, m) => {
           const t = m.mealType as string
@@ -72,15 +91,18 @@ export function FoodHistoryView({ history }: { history: HistoryData }) {
                       {meta.emoji} {meta.label}
                     </p>
                     {group.map((m) => (
-                      <div key={m.id} className="flex items-center justify-between pl-1 text-sm">
-                        <span className="max-w-[70%] truncate text-foreground/80">
+                      <div key={m.id} className="flex items-center justify-between gap-2 pl-1 text-sm">
+                        <span className="min-w-0 flex-1 truncate text-foreground/80">
                           {m.foodDescription}
                         </span>
-                        {m.aiCalories != null && (
-                          <span className="shrink-0 tabular-nums text-muted-foreground">
-                            {Math.round(m.aiCalories).toLocaleString()} kcal
-                          </span>
-                        )}
+                        <div className="flex shrink-0 items-center gap-2">
+                          <LocalTime dateIso={m.dateIso} />
+                          {m.aiCalories != null && (
+                            <span className="tabular-nums text-muted-foreground">
+                              {Math.round(m.aiCalories).toLocaleString()} kcal
+                            </span>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

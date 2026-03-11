@@ -120,6 +120,7 @@ model FoodLog {
   id              String   @id @default(cuid())
   userId          String   @map(name: "user_id")
   date            DateTime @default(now())
+  localDate       String?  @map(name: "local_date") // YYYY-MM-DD in user's local timezone
   mealType        MealType @default(SNACK) @map(name: "meal_type")
   foodDescription String   @map(name: "food_description") @db.Text
   aiCalories      Float?   @map(name: "ai_calories")

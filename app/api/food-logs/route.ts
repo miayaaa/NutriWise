@@ -13,6 +13,7 @@ const bodySchema = z.object({
   fat: z.number().min(0).optional(),
   aiComment: z.string().max(200).optional(),
   date: z.string().optional(),
+  localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 })
 
 export async function POST(req: Request) {
@@ -36,6 +37,7 @@ export async function POST(req: Request) {
         fat: body.fat,
         aiComment: body.aiComment,
         date: body.date ? new Date(body.date) : new Date(),
+        localDate: body.localDate,
       },
       select: { id: true, aiCalories: true },
     })

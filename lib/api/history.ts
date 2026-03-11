@@ -10,6 +10,7 @@ export async function getFoodHistory(userId: string, days = 30) {
     select: {
       id: true,
       date: true,
+      localDate: true,
       mealType: true,
       foodDescription: true,
       aiCalories: true,
@@ -20,17 +21,17 @@ export async function getFoodHistory(userId: string, days = 30) {
     orderBy: { date: "desc" },
   })
 
-  // Group by calendar date
+  // Group by local calendar date (falls back to UTC date for old entries without localDate)
   const map = new Map<string, typeof logs>()
   for (const log of logs) {
-    const key = log.date.toISOString().split("T")[0]
+    const key = log.localDate ?? log.date.toISOString().split("T")[0]
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(log)
   }
 
   return Array.from(map.entries()).map(([date, meals]) => ({
     date,
-    meals,
+    meals: meals.map((m) => ({ ...m, dateIso: m.date.toISOString() })),
     totalCalories: meals.reduce((s, m) => s + (m.aiCalories ?? 0), 0),
     totalProtein:  meals.reduce((s, m) => s + (m.protein  ?? 0), 0),
     totalCarbs:    meals.reduce((s, m) => s + (m.carbs    ?? 0), 0),

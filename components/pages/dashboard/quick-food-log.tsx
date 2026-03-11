@@ -40,7 +40,6 @@ function MacroBar({ protein, carbs, fat }: { protein: number; carbs: number; fat
   const pPct = Math.round((protein * 4 / total) * 100)
   const cPct = Math.round((carbs * 4 / total) * 100)
   const fPct = 100 - pPct - cPct
-
   return (
     <div className="space-y-1.5">
       <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -75,9 +74,7 @@ function CaloriePreviewCard({ estimate }: { estimate: CalorieEstimate }) {
       </div>
       <MacroBar protein={estimate.protein} carbs={estimate.carbs} fat={estimate.fat} />
       {estimate.comment && (
-        <p className="text-xs text-muted-foreground italic border-l-2 border-primary/40 pl-2">
-          {estimate.comment}
-        </p>
+        <p className="text-xs text-muted-foreground italic border-l-2 border-primary/40 pl-2">{estimate.comment}</p>
       )}
       {estimate.breakdown.length > 0 && (
         <div className="space-y-1.5 pt-1 border-t border-border">
@@ -117,12 +114,8 @@ function CalorieSkeletonCard() {
 }
 
 const pad = (n: number) => String(n).padStart(2, "0")
-function toDateStr(d: Date) {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-function toTimeStr(d: Date) {
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
+function toDateStr(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
+function toTimeStr(d: Date) { return `${pad(d.getHours())}:${pad(d.getMinutes())}` }
 function formatLoggedAt(date: string, time: string): string {
   if (!date || !time) return "Now"
   const d = new Date(`${date}T${time}`)
@@ -134,204 +127,281 @@ function formatLoggedAt(date: string, time: string): string {
   return d.toLocaleDateString([], { month: "short", day: "numeric" }) + `, ${t}`
 }
 
-export function QuickFoodLog({ onSuccess }: { onSuccess?: () => void }) {
-  const router = useRouter()
-  const [mealType, setMealType] = React.useState<MealType>("SNACK")
-  const [description, setDescription] = React.useState("")
-  const [estimate, setEstimate] = React.useState<CalorieEstimate | null>(null)
-  const [isEstimating, setIsEstimating] = React.useState(false)
-  const [isLogging, setIsLogging] = React.useState(false)
-  const [logDate, setLogDate] = React.useState("")
-  const [logTime, setLogTime] = React.useState("")
-  const [showTimePicker, setShowTimePicker] = React.useState(false)
-  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+export type QuickFoodLogHandle = { triggerLog: () => Promise<boolean> }
 
-  React.useEffect(() => {
-    const now = new Date()
-    setLogDate(toDateStr(now))
-    setLogTime(toTimeStr(now))
-  }, [])
+interface QuickFoodLogProps {
+  onSuccess?: () => void
+  hideButton?: boolean
+  onCanLogChange?: (canLog: boolean) => void
+  onLoggingChange?: (isLogging: boolean) => void
+}
 
-  // Auto-select meal type by time of day on mount
-  React.useEffect(() => {
-    const h = new Date().getHours()
-    if (h >= 5 && h < 11) setMealType("BREAKFAST")
-    else if (h >= 11 && h < 15) setMealType("LUNCH")
-    else if (h >= 17 && h < 21) setMealType("DINNER")
-    else setMealType("SNACK")
-  }, [])
+export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogProps>(
+  function QuickFoodLog({ onSuccess, hideButton = false, onCanLogChange, onLoggingChange }, ref) {
+    const router = useRouter()
+    const [mealType, setMealType] = React.useState<MealType>("SNACK")
+    const [description, setDescription] = React.useState("")
+    const [estimate, setEstimate] = React.useState<CalorieEstimate | null>(null)
+    const [aiStatus, setAiStatus] = React.useState<"idle" | "fetching" | "done" | "failed">("idle")
+    const [isLogging, setIsLogging] = React.useState(false)
+    const [logDate, setLogDate] = React.useState("")
+    const [logTime, setLogTime] = React.useState("")
+    const [showTimePicker, setShowTimePicker] = React.useState(false)
+    const estimateReqRef = React.useRef(0)
+    const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  React.useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
+    React.useEffect(() => {
+      const now = new Date()
+      setLogDate(toDateStr(now))
+      setLogTime(toTimeStr(now))
+    }, [])
 
-    const trimmed = description.trim()
-    if (trimmed.length < 10) {
-      setEstimate(null)
-      setIsEstimating(false)
-      return
-    }
+    React.useEffect(() => {
+      const h = new Date().getHours()
+      if (h >= 5 && h < 11) setMealType("BREAKFAST")
+      else if (h >= 11 && h < 15) setMealType("LUNCH")
+      else if (h >= 17 && h < 21) setMealType("DINNER")
+      else setMealType("SNACK")
+    }, [])
 
-    setIsEstimating(true)
-    debounceRef.current = setTimeout(async () => {
+    const runEstimate = React.useCallback(async (text: string) => {
+      const reqId = ++estimateReqRef.current
+      setAiStatus("fetching")
       try {
         const res = await fetch("/api/ai/estimate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ foodDescription: trimmed }),
+          body: JSON.stringify({ foodDescription: text }),
         })
-        if (res.ok) setEstimate((await res.json()) as CalorieEstimate)
-        else setEstimate(null)
+        if (reqId !== estimateReqRef.current) return
+        if (res.ok) {
+          setEstimate((await res.json()) as CalorieEstimate)
+          setAiStatus("done")
+        } else {
+          setEstimate(null)
+          setAiStatus("failed")
+        }
       } catch {
+        if (reqId !== estimateReqRef.current) return
         setEstimate(null)
-      } finally {
-        setIsEstimating(false)
+        setAiStatus("failed")
       }
-    }, 1800)
+    }, [])
 
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [description])
-
-  async function handleLog() {
-    const trimmed = description.trim()
-    if (!trimmed) return
-
-    setIsLogging(true)
-    try {
-      const res = await fetch("/api/food-logs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          foodDescription: trimmed,
-          mealType,
-          aiCalories: estimate?.calories,
-          protein: estimate?.protein,
-          carbs: estimate?.carbs,
-          fat: estimate?.fat,
-          aiComment: estimate?.comment,
-          date: logDate && logTime ? new Date(`${logDate}T${logTime}`).toISOString() : new Date().toISOString(),
-        }),
-      })
-
-      if (!res.ok) {
-        toast({ title: "Something went wrong.", description: "Could not save your meal. Please try again.", variant: "destructive" })
+    // Auto-estimate: fires 1.5s after the user stops typing (≥5 chars)
+    // The manual button can always override this immediately
+    React.useEffect(() => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      const trimmed = description.trim()
+      if (trimmed.length < 5) {
+        if (trimmed.length === 0) { setEstimate(null); setAiStatus("idle") }
         return
       }
+      // Only auto-trigger if there's no fresh estimate yet
+      if (aiStatus === "done" || aiStatus === "fetching") return
+      debounceRef.current = setTimeout(() => runEstimate(trimmed), 1500)
+      return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+    }, [description, aiStatus, runEstimate])
 
-      const result = await res.json()
-      const kcal = result.aiCalories ?? estimate?.calories
-      toast({
-        description: kcal
-          ? `Logged! ${Math.round(kcal).toLocaleString()} kcal recorded.`
-          : "Meal logged successfully.",
-      })
+    const canLog = description.trim().length >= 3 && !isLogging
+    const canEstimate = description.trim().length >= 3 && aiStatus !== "fetching"
 
-      setDescription("")
-      setEstimate(null)
-      const now = new Date()
-      setLogDate(toDateStr(now))
-      setLogTime(toTimeStr(now))
-      setShowTimePicker(false)
-      router.refresh()
-      onSuccess?.()
-    } finally {
-      setIsLogging(false)
+    React.useEffect(() => { onCanLogChange?.(canLog) }, [canLog, onCanLogChange])
+    React.useEffect(() => { onLoggingChange?.(isLogging) }, [isLogging, onLoggingChange])
+
+    async function handleLog(): Promise<boolean> {
+      const trimmed = description.trim()
+      if (!trimmed || trimmed.length < 3 || isLogging) return false
+      setIsLogging(true)
+      try {
+        const res = await fetch("/api/food-logs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            foodDescription: trimmed,
+            mealType,
+            aiCalories: estimate?.calories,
+            protein: estimate?.protein,
+            carbs: estimate?.carbs,
+            fat: estimate?.fat,
+            aiComment: estimate?.comment,
+            date: logDate && logTime ? new Date(`${logDate}T${logTime}`).toISOString() : new Date().toISOString(),
+            localDate: logDate || toDateStr(new Date()),
+          }),
+        })
+        if (!res.ok) {
+          toast({ title: "Save failed", description: "Could not save your meal. Please try again.", variant: "destructive" })
+          return false
+        }
+        const result = await res.json()
+        const kcal = result.aiCalories ?? estimate?.calories
+        toast({ description: kcal ? `Logged! ${Math.round(kcal).toLocaleString()} kcal recorded.` : "Meal logged." })
+        setDescription("")
+        setEstimate(null)
+        setAiStatus("idle")
+        const now = new Date()
+        setLogDate(toDateStr(now))
+        setLogTime(toTimeStr(now))
+        setShowTimePicker(false)
+        router.refresh()
+        onSuccess?.()
+        return true
+      } catch {
+        toast({ title: "Network error", description: "Check your connection and try again.", variant: "destructive" })
+        return false
+      } finally {
+        setIsLogging(false)
+      }
     }
-  }
 
-  const canLog = description.trim().length >= 3 && !isLogging
+    React.useImperativeHandle(ref, () => ({ triggerLog: handleLog }))
 
-  return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-      {/* Meal type selector */}
-      <div className="flex flex-wrap gap-2">
-        {MEAL_OPTIONS.map((opt) => (
+    return (
+      <div className="space-y-4">
+        {/* Meal type */}
+        <div className="flex flex-wrap gap-2">
+          {MEAL_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              disabled={isLogging}
+              onClick={() => setMealType(opt.value)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+                mealType === opt.value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              <span>{opt.emoji}</span><span>{opt.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Time picker */}
+        <div className="space-y-2">
           <button
-            key={opt.value}
             type="button"
-            onClick={() => setMealType(opt.value)}
-            className={cn(
-              "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-              mealType === opt.value
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            )}
+            disabled={isLogging}
+            onClick={() => setShowTimePicker((v) => !v)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
-            <span>{opt.emoji}</span>
-            <span>{opt.label}</span>
+            <Icons.calendar className="h-3.5 w-3.5 shrink-0" />
+            <span>{formatLoggedAt(logDate, logTime)}</span>
+            <span className="text-muted-foreground/40">· tap to change</span>
           </button>
-        ))}
-      </div>
 
-      {/* Time picker */}
-      <div className="space-y-2">
-        <button
-          type="button"
-          onClick={() => setShowTimePicker((v) => !v)}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
-          <Icons.calendar className="h-3.5 w-3.5 shrink-0" />
-          <span>{formatLoggedAt(logDate, logTime)}</span>
-          <span className="text-muted-foreground/40">· tap to change</span>
-        </button>
+          {showTimePicker && (
+            <div className="space-y-2">
+              <div className="flex justify-end">
+                <Button type="button" variant="ghost" size="sm" disabled={isLogging}
+                  onClick={() => { const now = new Date(); setLogDate(toDateStr(now)); setLogTime(toTimeStr(now)) }}>
+                  Use now
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Date</p>
+                  <input type="date" value={logDate} max={toDateStr(new Date())}
+                    onChange={(e) => setLogDate(e.target.value)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Time</p>
+                  <input type="time" value={logTime}
+                    onChange={(e) => setLogTime(e.target.value)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground" />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
-        {showTimePicker && (
-          <div className="grid grid-cols-1 gap-2">
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Date</p>
-              <input
-                type="date"
-                value={logDate}
-                max={toDateStr(new Date())}
-                onChange={(e) => setLogDate(e.target.value)}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground"
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Time</p>
-              <input
-                type="time"
-                value={logTime}
-                onChange={(e) => setLogTime(e.target.value)}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground"
-              />
-            </div>
+        {/* Food input + AI estimate button in one row */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium">What did you eat?</span>
+
+            {/* AI estimate button — always visible when there's text */}
+            <button
+              type="button"
+              disabled={!canEstimate || isLogging}
+              onClick={() => runEstimate(description.trim())}
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                aiStatus === "fetching"
+                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 cursor-wait"
+                  : aiStatus === "done"
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-200"
+                    : aiStatus === "failed"
+                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200"
+                      : canEstimate
+                        ? "bg-primary/10 text-primary hover:bg-primary/20"
+                        : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
+              )}
+            >
+              {aiStatus === "fetching"
+                ? <><Icons.spinner className="h-3 w-3 animate-spin" />Estimating…</>
+                : aiStatus === "done"
+                  ? <><Icons.check className="h-3 w-3" />Re-estimate</>
+                  : aiStatus === "failed"
+                    ? <><Icons.close className="h-3 w-3" />Retry AI</>
+                    : <>✨ Estimate</>
+              }
+            </button>
+          </div>
+
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="e.g. a bowl of oatmeal with banana, one cup of coffee with milk"
+            className="resize-none"
+            rows={3}
+            disabled={isLogging}
+            onKeyDown={(e) => {
+              // Cmd/Ctrl+Enter → log
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault()
+                if (canLog) handleLog()
+              }
+              // Shift+Enter → estimate
+              if (e.key === "Enter" && e.shiftKey) {
+                e.preventDefault()
+                if (canEstimate) runEstimate(description.trim())
+              }
+            }}
+          />
+
+          {/* Status hint below textarea */}
+          <p className="text-xs text-muted-foreground">
+            {description.trim().length === 0
+              ? "Describe your meal. AI estimation is optional — you can log without it."
+              : description.trim().length < 3
+                ? "Keep typing…"
+                : aiStatus === "fetching"
+                  ? "AI is estimating calories and macros…"
+                  : aiStatus === "done"
+                    ? "Estimate ready. Log or re-estimate anytime."
+                    : aiStatus === "failed"
+                      ? "AI estimate failed. You can still log — or retry."
+                      : description.trim().length >= 5
+                        ? "AI will estimate in a moment… or press ✨ Estimate now."
+                        : "Press ✨ Estimate or Shift+Enter for AI calories. Log anytime with Cmd+Enter."}
+          </p>
+        </div>
+
+        {aiStatus === "fetching" && <CalorieSkeletonCard />}
+        {aiStatus === "done" && estimate && <CaloriePreviewCard estimate={estimate} />}
+
+        {!hideButton && (
+          <div className="flex justify-end">
+            <Button onClick={handleLog} disabled={!canLog} size="sm">
+              {isLogging
+                ? <><Icons.spinner className="mr-2 h-4 w-4 animate-spin" />Logging…</>
+                : <><Icons.add className="mr-2 h-4 w-4" />Log meal</>
+              }
+            </Button>
           </div>
         )}
       </div>
-
-      {/* Food input */}
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">What did you eat?</span>
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">AI</span>
-        </div>
-        <Textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="e.g. a bowl of oatmeal with banana, one cup of coffee with milk"
-          className="resize-none"
-          rows={2}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault()
-              if (canLog) handleLog()
-            }
-          }}
-        />
-      </div>
-
-      {isEstimating && <CalorieSkeletonCard />}
-      {!isEstimating && estimate && <CaloriePreviewCard estimate={estimate} />}
-
-      <div className="flex justify-end">
-        <Button onClick={handleLog} disabled={!canLog} size="sm">
-          {isLogging ? (
-            <><Icons.spinner className="mr-2 h-4 w-4 animate-spin" />Logging...</>
-          ) : (
-            <><Icons.add className="mr-2 h-4 w-4" />Log meal</>
-          )}
-        </Button>
-      </div>
-    </div>
-  )
-}
+    )
+  }
+)

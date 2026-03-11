@@ -5,6 +5,8 @@ import { BsDropletFill, BsFire } from "react-icons/bs"
 import { MdFastfood } from "react-icons/md"
 
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Icons } from "@/components/icons"
 import {
   Credenza,
   CredenzaContent,
@@ -13,7 +15,7 @@ import {
   CredenzaTitle,
   CredenzaTrigger,
 } from "@/components/ui/credenza"
-import { QuickFoodLog } from "@/components/pages/dashboard/quick-food-log"
+import { QuickFoodLog, type QuickFoodLogHandle } from "@/components/pages/dashboard/quick-food-log"
 import { WaterQuickLog } from "@/components/pages/dashboard/water-quick-log"
 import { WorkoutLogForm } from "@/components/pages/dashboard/workout-log-form"
 
@@ -51,6 +53,17 @@ type LogKey = (typeof LOG_ACTIONS)[number]["key"]
 
 export function QuickLogCard() {
   const [open, setOpen] = React.useState<LogKey | null>(null)
+  const foodLogRef = React.useRef<QuickFoodLogHandle>(null)
+  const [foodCanLog, setFoodCanLog] = React.useState(false)
+  const [foodLogging, setFoodLogging] = React.useState(false)
+
+  function handleFoodOpen(isOpen: boolean) {
+    if (!isOpen) {
+      setOpen(null)
+      setFoodCanLog(false)
+      setFoodLogging(false)
+    }
+  }
 
   return (
     <>
@@ -79,15 +92,41 @@ export function QuickLogCard() {
         </div>
       </div>
 
-      {/* Food dialog */}
-      <Credenza open={open === "food"} onOpenChange={(o) => { if (!o) setOpen(null) }}>
-        <CredenzaContent className="max-h-[90dvh] overflow-y-auto">
-          <CredenzaHeader>
+      {/* Food dialog — flex-col layout so the Log button stays in a sticky footer */}
+      <Credenza open={open === "food"} onOpenChange={handleFoodOpen}>
+        <CredenzaContent className="flex max-h-[90dvh] flex-col overflow-hidden p-0">
+          <CredenzaHeader className="shrink-0 px-4 pt-5 pb-3">
             <CredenzaTitle>Log Food</CredenzaTitle>
             <CredenzaDescription>Describe what you ate — AI will estimate calories.</CredenzaDescription>
           </CredenzaHeader>
-          <div className="px-4 pb-6">
-            <QuickFoodLog onSuccess={() => setOpen(null)} />
+
+          {/* Scrollable form area */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-2">
+            <QuickFoodLog
+              ref={foodLogRef}
+              onSuccess={() => setOpen(null)}
+              hideButton
+              onCanLogChange={setFoodCanLog}
+              onLoggingChange={setFoodLogging}
+            />
+          </div>
+
+          {/* Sticky footer button — always visible */}
+          <div className="shrink-0 border-t bg-background px-4 py-4">
+            <Button
+              className="w-full"
+              disabled={!foodCanLog || foodLogging}
+              onClick={() => {
+                void foodLogRef.current?.triggerLog()
+              }}
+            >
+              {foodLogging ? (
+                <><Icons.spinner className="mr-2 h-4 w-4 animate-spin" />Logging...</>
+              ) : (
+                <><Icons.add className="mr-2 h-4 w-4" />Log meal</>
+              )}
+            </Button>
+            <p className="mt-2 text-center text-xs text-muted-foreground">Tip: press Ctrl/Cmd + Enter to log faster.</p>
           </div>
         </CredenzaContent>
       </Credenza>
