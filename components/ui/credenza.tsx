@@ -35,6 +35,7 @@ interface RootCredenzaProps extends BaseProps {
 
 interface CredenzaProps extends BaseProps {
   className?: string
+  style?: React.CSSProperties
   asChild?: true
 }
 

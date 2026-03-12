@@ -5,6 +5,8 @@ import { BsDropletFill, BsFire } from "react-icons/bs"
 import { MdFastfood } from "react-icons/md"
 
 import { cn } from "@/lib/utils"
+import { useKeyboardOffset } from "@/hooks/use-keyboard-offset"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import { Button } from "@/components/ui/button"
 import { Icons } from "@/components/icons"
 import {
@@ -57,6 +59,17 @@ export function QuickLogCard() {
   const [foodCanLog, setFoodCanLog] = React.useState(false)
   const [foodLogging, setFoodLogging] = React.useState(false)
 
+  const isMobile = !useMediaQuery("(min-width: 768px)")
+  const keyboardOffset = useKeyboardOffset()
+  // Only lift the drawer on mobile; desktop dialog is centered and unaffected
+  const drawerStyle: React.CSSProperties | undefined = isMobile && keyboardOffset > 0
+    ? {
+        bottom: keyboardOffset,
+        maxHeight: `min(90dvh, calc(100dvh - ${keyboardOffset + 40}px))`,
+        transition: "bottom 0.2s ease, max-height 0.2s ease",
+      }
+    : undefined
+
   function handleFoodOpen(isOpen: boolean) {
     if (!isOpen) {
       setOpen(null)
@@ -94,7 +107,10 @@ export function QuickLogCard() {
 
       {/* Food dialog — flex-col layout so the Log button stays in a sticky footer */}
       <Credenza open={open === "food"} onOpenChange={handleFoodOpen}>
-        <CredenzaContent className="flex max-h-[90dvh] flex-col overflow-hidden p-0">
+        <CredenzaContent
+          className="flex max-h-[90dvh] flex-col overflow-hidden p-0"
+          style={drawerStyle}
+        >
           <CredenzaHeader className="shrink-0 px-4 pt-5 pb-3">
             <CredenzaTitle>Log Food</CredenzaTitle>
             <CredenzaDescription>Describe what you ate — AI will estimate calories.</CredenzaDescription>
@@ -112,7 +128,7 @@ export function QuickLogCard() {
           </div>
 
           {/* Sticky footer button — always visible */}
-          <div className="shrink-0 border-t bg-background px-4 py-4">
+          <div className="shrink-0 border-t bg-background px-4 py-3">
             <Button
               className="w-full"
               disabled={!foodCanLog || foodLogging}
@@ -126,14 +142,16 @@ export function QuickLogCard() {
                 <><Icons.add className="mr-2 h-4 w-4" />Log meal</>
               )}
             </Button>
-            <p className="mt-2 text-center text-xs text-muted-foreground">Tip: press Ctrl/Cmd + Enter to log faster.</p>
+            {!isMobile && (
+              <p className="mt-2 text-center text-xs text-muted-foreground">Tip: press Ctrl/Cmd + Enter to log faster.</p>
+            )}
           </div>
         </CredenzaContent>
       </Credenza>
 
       {/* Water dialog */}
       <Credenza open={open === "water"} onOpenChange={(o) => { if (!o) setOpen(null) }}>
-        <CredenzaContent>
+        <CredenzaContent style={drawerStyle}>
           <CredenzaHeader>
             <CredenzaTitle>Log Water</CredenzaTitle>
             <CredenzaDescription>Track your daily hydration.</CredenzaDescription>
@@ -146,7 +164,7 @@ export function QuickLogCard() {
 
       {/* Workout dialog */}
       <Credenza open={open === "workout"} onOpenChange={(o) => { if (!o) setOpen(null) }}>
-        <CredenzaContent className="max-h-[90dvh] overflow-y-auto">
+        <CredenzaContent className="max-h-[90dvh] overflow-y-auto" style={drawerStyle}>
           <CredenzaHeader>
             <CredenzaTitle>Log Workout</CredenzaTitle>
             <CredenzaDescription>Track strength, cardio, or any custom session.</CredenzaDescription>
