@@ -1,21 +1,28 @@
 import * as React from "react"
 
+interface KeyboardState {
+  keyboardOffset: number
+  /** Actual visible viewport height (excludes keyboard). Px value, safe for CSS calculations. */
+  visualHeight: number
+}
+
 /**
- * Returns the height of the on-screen keyboard in pixels.
- * Uses the visualViewport API which is supported on iOS Safari 13+ and Android Chrome.
- * Falls back to 0 (no offset) when not available.
+ * Tracks keyboard height and visible viewport height using the visualViewport API.
+ * Supported on iOS Safari 13+ and Android Chrome.
  */
-export function useKeyboardOffset(): number {
-  const [offset, setOffset] = React.useState(0)
+export function useKeyboardOffset(): KeyboardState {
+  const [state, setState] = React.useState<KeyboardState>({
+    keyboardOffset: 0,
+    visualHeight: typeof window !== "undefined" ? window.innerHeight : 800,
+  })
 
   React.useEffect(() => {
     const vv = window.visualViewport
     if (!vv) return
 
     function update() {
-      // keyboard height = layout viewport height minus the visible area
-      const kh = window.innerHeight - vv!.height - (vv!.offsetTop ?? 0)
-      setOffset(Math.max(0, Math.round(kh)))
+      const kh = Math.max(0, Math.round(window.innerHeight - vv!.height - (vv!.offsetTop ?? 0)))
+      setState({ keyboardOffset: kh, visualHeight: Math.round(vv!.height) })
     }
 
     vv.addEventListener("resize", update)
@@ -26,5 +33,5 @@ export function useKeyboardOffset(): number {
     }
   }, [])
 
-  return offset
+  return state
 }

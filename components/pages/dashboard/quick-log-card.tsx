@@ -60,12 +60,13 @@ export function QuickLogCard() {
   const [foodLogging, setFoodLogging] = React.useState(false)
 
   const isMobile = !useMediaQuery("(min-width: 768px)")
-  const keyboardOffset = useKeyboardOffset()
-  // Only lift the drawer on mobile; desktop dialog is centered and unaffected
+  const { keyboardOffset, visualHeight } = useKeyboardOffset()
+  // Only lift the drawer on mobile; desktop dialog is centered and unaffected.
+  // Use px (not dvh) for maxHeight — dvh is dynamic on Android and causes near-zero values.
   const drawerStyle: React.CSSProperties | undefined = isMobile && keyboardOffset > 0
     ? {
         bottom: keyboardOffset,
-        maxHeight: `min(90dvh, calc(100dvh - ${keyboardOffset + 40}px))`,
+        maxHeight: `${visualHeight - 40}px`,
         transition: "bottom 0.2s ease, max-height 0.2s ease",
       }
     : undefined

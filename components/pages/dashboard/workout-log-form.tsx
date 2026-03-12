@@ -195,7 +195,7 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-2">
       {/* Workout mode */}
       <div className="space-y-2">
         <p className="text-sm font-medium">Workout category</p>
@@ -227,34 +227,43 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
             placeholder="Exercise (e.g. Barbell Squat)"
           />
           <div className="grid grid-cols-3 gap-2">
-            <Input
-              type="number"
-              inputMode="decimal"
-              min={1}
-              max={50}
-              value={sets}
-              onChange={(e) => setSets(e.target.value)}
-              placeholder="Sets"
-            />
-            <Input
-              type="number"
-              inputMode="decimal"
-              min={1}
-              max={100}
-              value={reps}
-              onChange={(e) => setReps(e.target.value)}
-              placeholder="Reps"
-            />
-            <Input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={1000}
-              step="0.5"
-              value={weightKg}
-              onChange={(e) => setWeightKg(e.target.value)}
-              placeholder="kg"
-            />
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Sets</p>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={50}
+                value={sets}
+                onChange={(e) => setSets(e.target.value)}
+                placeholder="3"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Reps</p>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={100}
+                value={reps}
+                onChange={(e) => setReps(e.target.value)}
+                placeholder="10"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Weight (kg)</p>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={1000}
+                step="0.5"
+                value={weightKg}
+                onChange={(e) => setWeightKg(e.target.value)}
+                placeholder="60"
+              />
+            </div>
           </div>
           <Input
             type="number"
@@ -296,45 +305,57 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
             />
           )}
           <div className="grid grid-cols-2 gap-2">
-            <Input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={200}
-              step="0.1"
-              value={distanceKm}
-              onChange={(e) => setDistanceKm(e.target.value)}
-              placeholder="Distance (km)"
-            />
-            <Input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={80}
-              step="0.1"
-              value={avgSpeedKph}
-              onChange={(e) => setAvgSpeedKph(e.target.value)}
-              placeholder="Speed (km/h)"
-            />
-            <Input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={30}
-              step="0.5"
-              value={inclinePct}
-              onChange={(e) => setInclinePct(e.target.value)}
-              placeholder="Incline (%)"
-            />
-            <Input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={10000}
-              value={elevationGainM}
-              onChange={(e) => setElevationGainM(e.target.value)}
-              placeholder="Elevation (m)"
-            />
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Distance (km)</p>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={200}
+                step="0.1"
+                value={distanceKm}
+                onChange={(e) => setDistanceKm(e.target.value)}
+                placeholder="5.0"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Speed (km/h)</p>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={80}
+                step="0.1"
+                value={avgSpeedKph}
+                onChange={(e) => setAvgSpeedKph(e.target.value)}
+                placeholder="10.0"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Incline (%)</p>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={30}
+                step="0.5"
+                value={inclinePct}
+                onChange={(e) => setInclinePct(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Elevation gain (m)</p>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={10000}
+                value={elevationGainM}
+                onChange={(e) => setElevationGainM(e.target.value)}
+                placeholder="0"
+              />
+            </div>
           </div>
         </div>
       )}
@@ -383,15 +404,13 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
         </div>
       )}
 
-      <div className="flex justify-end">
-        <Button onClick={handleLog} disabled={!canLog} size="sm">
-          {isLogging ? (
-            <><Icons.spinner className="mr-2 h-4 w-4 animate-spin" />Logging...</>
-          ) : (
-            <><Icons.add className="mr-2 h-4 w-4" />Save Workout</>
-          )}
-        </Button>
-      </div>
+      <Button onClick={handleLog} disabled={!canLog} className="w-full">
+        {isLogging ? (
+          <><Icons.spinner className="mr-2 h-4 w-4 animate-spin" />Logging...</>
+        ) : (
+          <><Icons.add className="mr-2 h-4 w-4" />Save Workout</>
+        )}
+      </Button>
     </div>
   )
 }
