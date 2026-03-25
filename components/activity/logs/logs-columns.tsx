@@ -65,7 +65,7 @@ export const logColumns: ColumnDef<LogsType>[] = [
       if (!kcal) return <div className="px-4 text-muted-foreground">—</div>
       return (
         <div className="px-4 font-medium tabular-nums">
-          {Math.round(kcal).toLocaleString()}
+          {Math.round(kcal).toLocaleString("en-US")}
           <span className="ml-1 text-xs font-normal text-muted-foreground">
             kcal
           </span>

@@ -21,6 +21,7 @@ const cardioContextSchema = z.object({
   mode: z.literal("cardio"),
   cardio: z.object({
     cardioType: z.string().min(1).max(100),
+    machineKcal: z.number().min(0).max(5000).optional(),
     distanceKm: z.number().min(0).max(1000).optional(),
     avgSpeedKph: z.number().min(0).max(120).optional(),
     inclinePct: z.number().min(0).max(60).optional(),

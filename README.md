@@ -1,67 +1,83 @@
 # NutriWise
 
-NutriWise is a nutrition tracking app that helps you log meals, analyze food with AI, and monitor your dietary habits.
+AI-powered nutrition and fitness tracking. Log meals, workouts, and weight — get personalized coaching from Claude based on your actual data.
 
 ## Features
 
-- Food logging with AI analysis
-- Dashboard analytics
-- Google Authentication
-- Cross-platform Support (PWA)
+- **Food logging** — plain text or photo (Claude Vision); AI estimates calories + macros; one-tap recent meals reuse
+- **Workout logging** — strength (sets/reps/weight), cardio with machine kcal field, or custom activities
+- **AI Coach** — chat with Claude using your real logged data as context; periodic 7/30/90-day insights with score; nutrition-first priority rules
+- **Weekly snapshot** — 7-day calorie sparkline, food + workout streaks, daily dots
+- **Dashboard** — daily calorie/macro summary, water tracker, weight trend chart (90-day), intermittent fasting timer
+- **Personalization** — BMR/TDEE estimation (Mifflin-St Jeor), goal-based protein targets, calorie goals
+- **PWA** — installable, cross-platform
 
 ## Stack
 
-- [Next.js](https://nextjs.org) `/app` dir
-- [TypeScript](https://www.typescriptlang.org)
-- [Tailwind CSS](https://tailwindcss.com)
-- [shadcn/ui](https://ui.shadcn.com) Components
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://www.prisma.io) ORM
-- [Zod](https://zod.dev) Validations
-- [Neon](https://neon.tech/) Database (PostgreSQL)
+- **Framework**: [Next.js 14](https://nextjs.org) (App Router, TypeScript)
+- **Database**: [Neon](https://neon.tech) PostgreSQL + [Prisma](https://www.prisma.io) ORM
+- **Auth**: [NextAuth.js](https://next-auth.js.org) (Google & GitHub OAuth)
+- **AI**: Anthropic Claude Haiku (streaming chat, calorie estimation, periodic insights)
+- **UI**: [Tailwind CSS](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com) + Recharts
 
 ## Running Locally
 
-1. Clone the repository.
-
+1. Clone and install:
 ```bash
 git clone https://github.com/miayaaa/NutriWise.git
-```
-
-2. Install dependencies using pnpm.
-
-```bash
+cd NutriWise
 pnpm install
 ```
 
-3. Copy `.env.example` to `.env.local` and update the variables.
-
+2. Copy and fill in environment variables:
 ```bash
 cp .env.example .env.local
 ```
 
-4. Generate prisma client before starting development server.
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | Neon PostgreSQL connection string |
+| `NEXTAUTH_SECRET` | Random secret (`openssl rand -base64 32`) |
+| `NEXTAUTH_URL` | App URL (`http://localhost:3000` for local) |
+| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth |
+| `GITHUB_ID` / `GITHUB_SECRET` | GitHub OAuth |
 
+3. Set up the database and start:
 ```bash
-pnpm postinstall
+pnpm postinstall    # generate Prisma client
+pnpm db:check       # verify migration status
+pnpm dev:checked    # start dev server with checks
 ```
 
-5. Check migration status (recommended).
+## Key Commands
 
 ```bash
-pnpm db:check
+pnpm dev            # start dev server
+pnpm build          # production build
+npx prisma db push  # sync schema to DB
+pnpm db:studio      # Prisma Studio GUI
+pnpm test           # Jest tests
+pnpm lint           # ESLint
+pnpm ci:verify      # full CI check suite
 ```
 
-6. Start the development server.
+## Project Structure
 
-```bash
-pnpm dev:checked
 ```
-
-## CI Verification Command
-
-Run the same checks used for CI verification:
-
-```bash
-pnpm ci:verify
+app/
+  api/
+    ai/chat/          # streaming Claude coach chat (SSE)
+    ai/estimate/      # food calorie AI estimation
+    coach/insights/   # periodic 7/30/90d analysis (cached 12h)
+    food-logs/        # CRUD + history
+    workout-logs/     # CRUD
+    water-logs/       # CRUD
+    weight-logs/      # CRUD
+  dashboard/          # main app pages
+lib/
+  ai/                 # Claude prompts & integration
+  api/                # DB query helpers
+prisma/
+  schema.prisma       # full data model
 ```

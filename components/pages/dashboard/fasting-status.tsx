@@ -117,8 +117,8 @@ export function FastingStatus({ fastingStart, fastingEnd, todayLogs }: FastingSt
               <span>{violations.length} meal{violations.length > 1 ? "s" : ""} outside window</span>
             </div>
             {violations.map((v, i) => (
-              <p key={i} className="text-xs text-muted-foreground pl-5 truncate">
-                {v.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · {v.foodDescription}
+              <p key={i} className="text-xs text-muted-foreground pl-5 truncate" suppressHydrationWarning>
+                {v.date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} · {v.foodDescription}
               </p>
             ))}
           </div>

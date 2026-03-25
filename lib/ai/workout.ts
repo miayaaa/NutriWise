@@ -11,6 +11,7 @@ type WorkoutAnalysisContext = {
   }
   cardio?: {
     cardioType: string
+    machineKcal?: number
     distanceKm?: number
     avgSpeedKph?: number
     inclinePct?: number
@@ -65,6 +66,7 @@ export async function generateWorkoutComment(
           content: `The user just completed a ${durationMin}-minute ${type} workout.
 Workout details JSON:
 ${JSON.stringify(analysisContext ?? null)}
+${analysisContext?.cardio?.machineKcal != null ? `Machine-displayed calories: ${analysisContext.cardio.machineKcal} kcal (note: machine readings have ~20-40% error margin).` : ""}
 
 Notes:
 ${notes ?? "n/a"}

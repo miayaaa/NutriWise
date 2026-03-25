@@ -64,7 +64,7 @@ function CaloriePreviewCard({ estimate }: { estimate: CalorieEstimate }) {
         <div>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Estimated</p>
           <p className="text-3xl font-bold text-foreground leading-none">
-            {estimate.calories.toLocaleString()}
+            {estimate.calories.toLocaleString("en-US")}
             <span className="ml-1 text-base font-normal text-muted-foreground">kcal</span>
           </p>
         </div>
@@ -121,10 +121,10 @@ function formatLoggedAt(date: string, time: string): string {
   const d = new Date(`${date}T${time}`)
   const now = new Date()
   const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1)
-  const t = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  const t = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
   if (d.toDateString() === now.toDateString()) return `Today, ${t}`
   if (d.toDateString() === yesterday.toDateString()) return `Yesterday, ${t}`
-  return d.toLocaleDateString([], { month: "short", day: "numeric" }) + `, ${t}`
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + `, ${t}`
 }
 
 export type QuickFoodLogHandle = { triggerLog: () => Promise<boolean> }
@@ -134,6 +134,16 @@ interface QuickFoodLogProps {
   hideButton?: boolean
   onCanLogChange?: (canLog: boolean) => void
   onLoggingChange?: (isLogging: boolean) => void
+}
+
+type RecentMeal = {
+  foodDescription: string
+  mealType: MealType
+  aiCalories: number | null
+  protein: number | null
+  carbs: number | null
+  fat: number | null
+  aiComment: string | null
 }
 
 export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogProps>(
@@ -147,8 +157,19 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
     const [logDate, setLogDate] = React.useState("")
     const [logTime, setLogTime] = React.useState("")
     const [showTimePicker, setShowTimePicker] = React.useState(false)
+    const [recentMeals, setRecentMeals] = React.useState<RecentMeal[]>([])
+    const [photoStatus, setPhotoStatus] = React.useState<"idle" | "scanning" | "done" | "failed">("idle")
+    const photoInputRef = React.useRef<HTMLInputElement>(null)
     const estimateReqRef = React.useRef(0)
     const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    // Load recent meals once on mount
+    React.useEffect(() => {
+      fetch("/api/food-logs/recent")
+        .then((r) => r.ok ? r.json() : [])
+        .then((data: RecentMeal[]) => setRecentMeals(data))
+        .catch(() => {})
+    }, [])
 
     React.useEffect(() => {
       const now = new Date()
@@ -203,6 +224,56 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
       return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
     }, [description, aiStatus, runEstimate])
 
+    function applyRecentMeal(meal: RecentMeal) {
+      setDescription(meal.foodDescription)
+      setMealType(meal.mealType)
+      if (meal.aiCalories != null) {
+        setEstimate({
+          calories: meal.aiCalories,
+          protein: meal.protein ?? 0,
+          carbs: meal.carbs ?? 0,
+          fat: meal.fat ?? 0,
+          breakdown: [],
+          confidence: "medium",
+          comment: meal.aiComment ?? undefined,
+        })
+        setAiStatus("done")
+      } else {
+        setEstimate(null)
+        setAiStatus("idle")
+      }
+    }
+
+    async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+      const file = e.target.files?.[0]
+      if (!file) return
+      e.target.value = "" // reset so same file can be re-selected
+      setPhotoStatus("scanning")
+      setEstimate(null)
+      setAiStatus("idle")
+      try {
+        const form = new FormData()
+        form.append("image", file)
+        const res = await fetch("/api/ai/vision-food", { method: "POST", body: form })
+        if (!res.ok) { setPhotoStatus("failed"); return }
+        const data = await res.json() as CalorieEstimate & { description: string }
+        if (data.description) setDescription(data.description)
+        setEstimate({
+          calories: data.calories,
+          protein: data.protein,
+          carbs: data.carbs,
+          fat: data.fat,
+          breakdown: data.breakdown ?? [],
+          confidence: data.confidence,
+          comment: data.comment,
+        })
+        setAiStatus("done")
+        setPhotoStatus("done")
+      } catch {
+        setPhotoStatus("failed")
+      }
+    }
+
     const canLog = description.trim().length >= 3 && !isLogging
     const canEstimate = description.trim().length >= 3 && aiStatus !== "fetching"
 
@@ -235,7 +306,7 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
         }
         const result = await res.json()
         const kcal = result.aiCalories ?? estimate?.calories
-        toast({ description: kcal ? `Logged! ${Math.round(kcal).toLocaleString()} kcal recorded.` : "Meal logged." })
+        toast({ description: kcal ? `Logged! ${Math.round(kcal).toLocaleString("en-US")} kcal recorded.` : "Meal logged." })
         setDescription("")
         setEstimate(null)
         setAiStatus("idle")
@@ -285,7 +356,7 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
             <Icons.calendar className="h-3.5 w-3.5 shrink-0" />
-            <span>{formatLoggedAt(logDate, logTime)}</span>
+            <span suppressHydrationWarning>{formatLoggedAt(logDate, logTime)}</span>
             <span className="text-muted-foreground/40">· tap to change</span>
           </button>
 
@@ -315,10 +386,63 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
           )}
         </div>
 
+        {/* Recent meals */}
+        {recentMeals.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground">Recent</p>
+            <div className="flex flex-wrap gap-1.5">
+              {recentMeals.map((meal, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  disabled={isLogging}
+                  onClick={() => applyRecentMeal(meal)}
+                  className="max-w-[200px] truncate rounded-full border border-border bg-muted/50 px-3 py-1 text-xs text-foreground/70 hover:bg-muted hover:text-foreground transition-colors"
+                  title={meal.foodDescription ?? ""}
+                >
+                  {meal.aiCalories != null && (
+                    <span className="mr-1.5 font-medium tabular-nums text-foreground/50">{Math.round(meal.aiCalories)}</span>
+                  )}
+                  {meal.foodDescription}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Food input + AI estimate button in one row */}
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-medium">What did you eat?</span>
+
+            <div className="flex items-center gap-1.5">
+            {/* Photo button */}
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handlePhotoChange}
+            />
+            <button
+              type="button"
+              disabled={isLogging || photoStatus === "scanning"}
+              onClick={() => photoInputRef.current?.click()}
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                photoStatus === "scanning"
+                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 cursor-wait"
+                  : photoStatus === "failed"
+                    ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              {photoStatus === "scanning"
+                ? <><Icons.spinner className="h-3 w-3 animate-spin" />Scanning…</>
+                : <>📷</>
+              }
+            </button>
 
             {/* AI estimate button — always visible when there's text */}
             <button
@@ -347,6 +471,7 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
                     : <>✨ Estimate</>
               }
             </button>
+            </div>
           </div>
 
           <Textarea

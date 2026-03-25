@@ -118,8 +118,23 @@ async function buildSystemPrompt(userId: string): Promise<string> {
   type WorkoutDetailsJson = {
     mode?: string
     strength?: { exercise?: string; sets?: number; reps?: number; weightKg?: number }
-    cardio?: { cardioType?: string; distanceKm?: number; avgSpeedKph?: number }
+    cardio?: { cardioType?: string; machineKcal?: number; distanceKm?: number; avgSpeedKph?: number }
     other?: { workoutName?: string }
+  }
+
+  // Calculate consecutive training days (most recent streak)
+  const workoutDateSet = new Set(
+    recentWorkouts.map((w) => w.date.toISOString().split("T")[0])
+  )
+  let consecutiveTrainingDays = 0
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today)
+    d.setDate(today.getDate() - i)
+    if (workoutDateSet.has(d.toISOString().split("T")[0])) {
+      consecutiveTrainingDays++
+    } else {
+      break
+    }
   }
 
   const workoutSummary = recentWorkouts.map((w) => {
@@ -131,7 +146,7 @@ async function buildSystemPrompt(userId: string): Promise<string> {
     }
     if (d.mode === "cardio" && d.cardio) {
       const c = d.cardio
-      return `${date}: Cardio — ${c.cardioType ?? "cardio"}${c.distanceKm ? ` ${c.distanceKm}km` : ""}${c.avgSpeedKph ? ` @${c.avgSpeedKph}km/h` : ""} (${w.durationMin}min)`
+      return `${date}: Cardio — ${c.cardioType ?? "cardio"}${c.distanceKm ? ` ${c.distanceKm}km` : ""}${c.avgSpeedKph ? ` @${c.avgSpeedKph}km/h` : ""} (${w.durationMin}min)${c.machineKcal != null ? `, machine: ${c.machineKcal} kcal (±30% estimate)` : ""}`
     }
     return `${date}: ${w.type} (${w.durationMin}min)`
   })
@@ -173,17 +188,27 @@ ${recentDaySummary.length > 0 ? recentDaySummary.map((d) => `- ${d}`).join("\n")
 
 ## Recent Workouts (last 7 days)
 ${workoutSummary.length > 0 ? workoutSummary.map((w) => `- ${w}`).join("\n") : "- No workouts logged in the last 7 days"}
+- Consecutive training days (current streak): ${consecutiveTrainingDays}
 
 ## Coaching Style
+
+### Priority rules — check these FIRST before any advice:
+1. **Calorie adequacy**: If today's logged calories are below 1000 kcal (or below 75% of BMR if known), address nutrition FIRST. Do NOT recommend increasing workout intensity or adding cardio when intake is this low — it will accelerate muscle loss and metabolic adaptation. Instead, lead with: why adequate intake matters, what to eat, then mention training.
+2. **Recovery**: If consecutive training days ≥ 4, recommend active recovery or rest before more intensity. Do not suggest adding workouts on top of an unbroken streak.
+3. **Calorie estimate uncertainty**: Machine-displayed calories (treadmill, etc.) and AI food estimates both have ±20–40% error. Frame advice around trends, not single-day precision.
+
+### Goal-specific coaching:
+- For muscle_gain: push progressive overload, protein ≥2g/kg body weight, limit steady-state cardio.
+- For fat_loss: maintain a *moderate* calorie deficit (aim for ~300–500 kcal below TDEE, not more), high protein ≥1.8g/kg to preserve muscle. Only add cardio if intake is adequate. Sustainable beats aggressive.
+- For body_recomposition: slight deficit or maintenance, maximum protein, strength training priority.
+- For maintenance: balance, avoid overtraining, consistent habits.
+
+### General:
+- **Trend over daily number**: When giving nutrition feedback, reference the weekly average (past 6 days) before judging today's single number. One day's data is noisy — the trend matters.
 - Be direct and specific. Give real numbers (reps, sets, weight, calories, grams).
 - Reference their actual logged data when relevant (e.g. "Your bench press was 60kg last session — aim for 62.5kg next time").
 - Base ALL advice on their real records above, not generic recommendations.
 - If they haven't set a fitness goal, encourage them to do so in Settings for better advice.
-- Tailor ALL advice to their stated fitness goal.
-- For muscle_gain: push progressive overload, protein ≥2g/kg body weight, limit steady-state cardio.
-- For fat_loss: maintain calorie deficit, high protein to preserve muscle, add cardio frequency.
-- For body_recomposition: slight deficit or maintenance, maximum protein, strength training priority.
-- For maintenance: balance, avoid overtraining, consistent habits.
 - If the user is doing intermittent fasting, factor timing into all nutrition advice: front-load protein and calories within the eating window, time workouts to align with or just before the eating window, avoid recommending food outside their window.
 - Keep responses concise but substantive. Use bullet points for action items.
 - Do not be overly cautious or add excessive disclaimers.`

@@ -37,8 +37,8 @@ function MacroChips({ protein, carbs, fat }: { protein: number; carbs: number; f
 }
 
 function LocalTime({ dateIso }: { dateIso: string }) {
-  const t = new Date(dateIso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-  return <span className="shrink-0 text-xs text-muted-foreground/60 tabular-nums">{t}</span>
+  const t = new Date(dateIso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+  return <span className="shrink-0 text-xs text-muted-foreground/60 tabular-nums" suppressHydrationWarning>{t}</span>
 }
 
 function getDateLabel(date: string) {
@@ -249,7 +249,7 @@ export function FoodHistoryView({ history }: { history: HistoryData }) {
                 </div>
                 <div className="ml-4 shrink-0 text-right">
                   <p className="text-2xl font-bold tabular-nums leading-none">
-                    {Math.round(totalCalories).toLocaleString()}
+                    {Math.round(totalCalories).toLocaleString("en-US")}
                   </p>
                   <p className="text-xs text-muted-foreground">kcal</p>
                 </div>
@@ -274,7 +274,7 @@ export function FoodHistoryView({ history }: { history: HistoryData }) {
                             <LocalTime dateIso={m.dateIso} />
                             {m.aiCalories != null && (
                               <span className="tabular-nums text-muted-foreground">
-                                {Math.round(m.aiCalories).toLocaleString()} kcal
+                                {Math.round(m.aiCalories).toLocaleString("en-US")} kcal
                               </span>
                             )}
                             {/* Action buttons — always visible on mobile, hover on desktop */}

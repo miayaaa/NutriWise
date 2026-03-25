@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 import { getTodayFoodLogs } from "@/lib/api/dashboard"
+import { getWeeklyStats } from "@/lib/api/weekly-stats"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { getCurrentUser } from "@/lib/session"
@@ -12,6 +13,8 @@ import { TodayIntake } from "@/components/pages/dashboard/today-intake"
 import { TodayWorkouts } from "@/components/pages/dashboard/today-workouts"
 import { WaterProgress } from "@/components/pages/dashboard/water-progress"
 import { WeightTracker } from "@/components/pages/dashboard/weight-tracker"
+import { WeeklySnapshot } from "@/components/pages/dashboard/weekly-snapshot"
+import { MealReminderBanner } from "@/components/pages/dashboard/meal-reminder-banner"
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -30,7 +33,7 @@ export default async function Dashboard() {
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 89)
   ninetyDaysAgo.setHours(0, 0, 0, 0)
 
-  const [todayMeals, dbUser, todayWater, weightLogs, todayWorkouts] = await Promise.all([
+  const [todayMeals, dbUser, todayWater, weightLogs, todayWorkouts, weeklyStats] = await Promise.all([
     getTodayFoodLogs(user.id),
     db.user.findUnique({
       where: { id: user.id },
@@ -58,10 +61,16 @@ export default async function Dashboard() {
       select: { id: true, type: true, durationMin: true, details: true, notes: true, aiComment: true },
       orderBy: { date: "asc" },
     }),
+    getWeeklyStats(user.id),
   ])
 
   return (
     <Shell className="w-full px-4 md:px-0">
+      {/* Meal reminder — client-side time check, no SSR mismatch */}
+      <MealReminderBanner
+        loggedMealTypes={todayMeals.map((m) => m.mealType)}
+      />
+
       {/* Quick log — food / water / workout dialogs */}
       <QuickLogCard />
 
@@ -73,6 +82,20 @@ export default async function Dashboard() {
           todayLogs={todayMeals.map((m) => ({ date: m.date, foodDescription: m.foodDescription }))}
         />
       )}
+
+      {/* Weekly snapshot */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <WeeklySnapshot
+          avgKcalPerLoggedDay={weeklyStats.avgKcalPerLoggedDay}
+          daysLoggedFood={weeklyStats.daysLoggedFood}
+          workoutDaysThisWeek={weeklyStats.workoutDaysThisWeek}
+          totalWorkoutMinThisWeek={weeklyStats.totalWorkoutMinThisWeek}
+          foodStreak={weeklyStats.foodStreak}
+          workoutStreak={weeklyStats.workoutStreak}
+          dailyKcal={weeklyStats.dailyKcal}
+          dailyCalorieGoal={dbUser?.dailyCalorieGoal}
+        />
+      </div>
 
       {/* Today summary — 3 cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">

@@ -74,7 +74,7 @@ function CaloriePreviewCard({ estimate }: { estimate: CalorieEstimate }) {
             Estimated
           </p>
           <p className="text-3xl font-bold text-foreground leading-none">
-            {estimate.calories.toLocaleString()}
+            {estimate.calories.toLocaleString("en-US")}
             <span className="ml-1 text-base font-normal text-muted-foreground">
               kcal
             </span>

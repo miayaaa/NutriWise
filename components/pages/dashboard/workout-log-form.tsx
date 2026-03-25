@@ -19,13 +19,13 @@ const WORKOUT_MODES: { value: WorkoutMode; label: string }[] = [
 ]
 
 const CARDIO_PRESETS = [
+  "Rowing",
+  "Incline Walk",
   "Treadmill",
   "Outdoor Run",
-  "Incline Walk",
   "Stair Climber",
   "Cycling",
   "Elliptical",
-  "Rowing",
   "Swimming",
   "Hiking",
   "Other",
@@ -46,6 +46,7 @@ type WorkoutAnalysisContext = {
   }
   cardio?: {
     cardioType: string
+    machineKcal?: number
     distanceKm?: number
     avgSpeedKph?: number
     inclinePct?: number
@@ -68,6 +69,8 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
 
   const [cardioType, setCardioType] = React.useState("Treadmill")
   const [customCardioType, setCustomCardioType] = React.useState("")
+  const [machineKcal, setMachineKcal] = React.useState("")
+  const [showCardioDetails, setShowCardioDetails] = React.useState(false)
   const [distanceKm, setDistanceKm] = React.useState("")
   const [avgSpeedKph, setAvgSpeedKph] = React.useState("")
   const [inclinePct, setInclinePct] = React.useState("")
@@ -108,6 +111,8 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
     setRestSec("")
     setCardioType("Treadmill")
     setCustomCardioType("")
+    setMachineKcal("")
+    setShowCardioDetails(false)
     setDistanceKm("")
     setAvgSpeedKph("")
     setInclinePct("")
@@ -136,6 +141,7 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
         mode,
         cardio: {
           cardioType: selectedCardioType,
+          machineKcal: machineKcal ? Number(machineKcal) : undefined,
           distanceKm: distanceKm ? Number(distanceKm) : undefined,
           avgSpeedKph: avgSpeedKph ? Number(avgSpeedKph) : undefined,
           inclinePct: inclinePct ? Number(inclinePct) : undefined,
@@ -304,59 +310,80 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
               placeholder="Custom cardio type"
             />
           )}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Distance (km)</p>
-              <Input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                max={200}
-                step="0.1"
-                value={distanceKm}
-                onChange={(e) => setDistanceKm(e.target.value)}
-                placeholder="5.0"
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Speed (km/h)</p>
-              <Input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                max={80}
-                step="0.1"
-                value={avgSpeedKph}
-                onChange={(e) => setAvgSpeedKph(e.target.value)}
-                placeholder="10.0"
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Incline (%)</p>
-              <Input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                max={30}
-                step="0.5"
-                value={inclinePct}
-                onChange={(e) => setInclinePct(e.target.value)}
-                placeholder="0"
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Elevation gain (m)</p>
-              <Input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                max={10000}
-                value={elevationGainM}
-                onChange={(e) => setElevationGainM(e.target.value)}
-                placeholder="0"
-              />
-            </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Machine calories (kcal) <span className="text-muted-foreground/60">— from display screen, optional</span></p>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={5000}
+              value={machineKcal}
+              onChange={(e) => setMachineKcal(e.target.value)}
+              placeholder="e.g. 211"
+            />
           </div>
+          <button
+            type="button"
+            onClick={() => setShowCardioDetails((v) => !v)}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showCardioDetails ? "▲ Hide details" : "▼ More details (distance, speed, incline)"}
+          </button>
+          {showCardioDetails && (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Distance (km)</p>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  max={200}
+                  step="0.1"
+                  value={distanceKm}
+                  onChange={(e) => setDistanceKm(e.target.value)}
+                  placeholder="5.0"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Speed (km/h)</p>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  max={80}
+                  step="0.1"
+                  value={avgSpeedKph}
+                  onChange={(e) => setAvgSpeedKph(e.target.value)}
+                  placeholder="10.0"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Incline (%)</p>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  max={30}
+                  step="0.5"
+                  value={inclinePct}
+                  onChange={(e) => setInclinePct(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Elevation gain (m)</p>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  max={10000}
+                  value={elevationGainM}
+                  onChange={(e) => setElevationGainM(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 

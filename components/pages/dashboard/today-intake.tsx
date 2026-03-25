@@ -107,7 +107,7 @@ export function TodayIntake({ meals, dailyCalorieGoal }: TodayIntakeProps) {
           {/* Consumed */}
           <div className="flex-1 min-w-0">
             <div className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400 leading-none">
-              {Math.round(totalKcal).toLocaleString()}
+              {Math.round(totalKcal).toLocaleString("en-US")}
             </div>
             <div className="text-xs text-muted-foreground mt-1">kcal consumed</div>
           </div>
@@ -120,7 +120,7 @@ export function TodayIntake({ meals, dailyCalorieGoal }: TodayIntakeProps) {
               <div className="flex-1 min-w-0 text-center">
                 <div className="text-xs text-muted-foreground mb-0.5">Goal</div>
                 <div className="text-lg font-bold tabular-nums text-amber-500 leading-none">
-                  {goal.toLocaleString()}
+                  {goal.toLocaleString("en-US")}
                 </div>
                 <div className="text-xs text-muted-foreground mt-0.5">kcal</div>
               </div>
@@ -132,7 +132,7 @@ export function TodayIntake({ meals, dailyCalorieGoal }: TodayIntakeProps) {
                 <RingProgress pct={pct} />
                 <div className="min-w-0">
                   <div className="text-lg font-bold tabular-nums leading-none">
-                    {pct >= 100 ? "0" : Math.round(goal - totalKcal).toLocaleString()}
+                    {pct >= 100 ? "0" : Math.round(goal - totalKcal).toLocaleString("en-US")}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">remaining</div>
                 </div>
@@ -174,13 +174,13 @@ export function TodayIntake({ meals, dailyCalorieGoal }: TodayIntakeProps) {
                     <div key={m.id} className="flex items-center justify-between text-sm pl-1 gap-2">
                       <div className="min-w-0 flex-1">
                         <span className="truncate block text-foreground/80">{m.foodDescription}</span>
-                        <span className="text-[11px] text-muted-foreground/70 tabular-nums">
-                          {new Date(m.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        <span className="text-[11px] text-muted-foreground/70 tabular-nums" suppressHydrationWarning>
+                          {new Date(m.date).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </div>
                       {m.aiCalories != null && (
                         <span className="shrink-0 tabular-nums font-medium text-foreground/70">
-                          {Math.round(m.aiCalories).toLocaleString()} kcal
+                          {Math.round(m.aiCalories).toLocaleString("en-US")} kcal
                         </span>
                       )}
                     </div>

@@ -35,7 +35,7 @@ export default function Footer() {
         <hr className="my-6 text-muted-foreground sm:mx-auto" />
         <div className="flex items-center justify-center">
           <div className="block text-sm text-muted-foreground sm:text-center">
-            © {new Date().getFullYear()}{" "}
+            © 2026{" "}
             <span>NutriWise</span>
             . All Rights Reserved.
           </div>
