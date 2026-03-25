@@ -74,15 +74,6 @@ export default async function Dashboard() {
       {/* Quick log — food / water / workout dialogs */}
       <QuickLogCard />
 
-      {/* Fasting status */}
-      {dbUser?.fastingEnabled && (
-        <FastingStatus
-          fastingStart={dbUser.fastingStart}
-          fastingEnd={dbUser.fastingEnd}
-          todayLogs={todayMeals.map((m) => ({ date: m.date, foodDescription: m.foodDescription }))}
-        />
-      )}
-
       {/* Weekly snapshot */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <WeeklySnapshot
@@ -113,6 +104,15 @@ export default async function Dashboard() {
         />
         <TodayWorkouts workouts={todayWorkouts} />
       </div>
+
+      {/* Fasting status — secondary feature, shown below main content */}
+      {dbUser?.fastingEnabled && (
+        <FastingStatus
+          fastingStart={dbUser.fastingStart}
+          fastingEnd={dbUser.fastingEnd}
+          todayLogs={todayMeals.map((m) => ({ date: m.date, foodDescription: m.foodDescription }))}
+        />
+      )}
     </Shell>
   )
 }
