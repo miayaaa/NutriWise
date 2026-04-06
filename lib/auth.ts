@@ -1,5 +1,6 @@
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { NextAuthOptions } from "next-auth"
+import CredentialsProvider from "next-auth/providers/credentials"
 import GithubProvider from "next-auth/providers/github"
 import GoogleProvider from "next-auth/providers/google"
 
@@ -27,6 +28,18 @@ export const authOptions: NextAuthOptions = {
           clientSecret: env.GITHUB_CLIENT_SECRET,
         })]
       : []),
+    CredentialsProvider({
+      id: "guest",
+      name: "Guest",
+      credentials: {},
+      async authorize() {
+        const guestEmail = "guest@nutriwise.app"
+        const existing = await db.user.findUnique({ where: { email: guestEmail } })
+        if (existing) return { id: existing.id, email: existing.email, name: existing.name }
+        const created = await db.user.create({ data: { email: guestEmail, name: "Guest" } })
+        return { id: created.id, email: created.email, name: created.name }
+      },
+    }),
   ],
   callbacks: {
     async session({ token, session }) {

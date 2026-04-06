@@ -75,6 +75,25 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
           Continue with Github
         </button>
       )}
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">or</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        className={cn(buttonVariants({ variant: "ghost" }), "text-muted-foreground")}
+        onClick={() => {
+          setIsLoading(true)
+          signIn("guest", { callbackUrl })
+        }}
+        disabled={isLoading}
+      >
+        Continue as Guest
+      </button>
       {providers && Object.keys(providers).length === 0 && (
         <p className="text-sm text-muted-foreground">
           No sign-in providers are configured.

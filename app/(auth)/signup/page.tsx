@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import Link from "next/link"
+import { Suspense } from "react"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -35,7 +36,9 @@ export default function Signup() {
             Select a provider to create your account
           </p>
         </div>
-        <UserAuthForm />
+        <Suspense fallback={<div className="h-20" />}>
+          <UserAuthForm />
+        </Suspense>
         <p className="px-8 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link
