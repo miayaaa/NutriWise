@@ -4,6 +4,7 @@ import Anthropic from "@anthropic-ai/sdk"
 
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { getCycleInfo } from "@/lib/cycle"
 
 const bodySchema = z.object({
   messages: z.array(
@@ -44,6 +45,8 @@ async function buildSystemPrompt(userId: string): Promise<string> {
         fastingEnabled: true,
         fastingStart: true,
         fastingEnd: true,
+        lastPeriodDate: true,
+        avgCycleDays: true,
       },
     }),
     db.foodLog.findMany({
@@ -161,6 +164,52 @@ async function buildSystemPrompt(userId: string): Promise<string> {
       ).join(" → ")
     : null
 
+  // Menstrual cycle phase
+  const cycleInfo = user?.lastPeriodDate
+    ? getCycleInfo(user.lastPeriodDate, user.avgCycleDays ?? 28)
+    : null
+
+  // Weekly average calorie intake (logged days only)
+  const weeklyKcalValues = Array.from(recentDayMap.values()).map((d) => d.kcal)
+  const weeklyAvgKcal = weeklyKcalValues.length > 0
+    ? Math.round(weeklyKcalValues.reduce((a, b) => a + b, 0) / weeklyKcalValues.length)
+    : null
+
+  // BMR as raw number for comparison
+  let bmrRaw: number | null = null
+  if (user?.age && user?.heightCm && latestWeight?.weightKg && user?.gender) {
+    const w = latestWeight.weightKg
+    const h = user.heightCm
+    const a = user.age
+    bmrRaw = Math.round(
+      user.gender === "female"
+        ? 10 * w + 6.25 * h - 5 * a - 161
+        : 10 * w + 6.25 * h - 5 * a + 5
+    )
+  }
+
+  // Priority flag strings for the prompt
+  const todayCalorieTooLow = todayKcal > 0 && (todayKcal < 1000 || (bmrRaw != null && todayKcal < bmrRaw * 0.70))
+  const weeklyAvgTooLow = weeklyAvgKcal != null && weeklyAvgKcal > 0 && (weeklyAvgKcal < 1100 || (bmrRaw != null && weeklyAvgKcal < bmrRaw))
+  const needsRestDay = consecutiveTrainingDays >= 4
+
+  const priorityAlerts: string[] = []
+  if (todayCalorieTooLow) {
+    priorityAlerts.push(
+      `⚠️ PRIORITY ALERT — TODAY'S CALORIES TOO LOW: ${Math.round(todayKcal)} kcal${bmrRaw ? ` (BMR is ~${bmrRaw} kcal, today is ${Math.round((todayKcal / bmrRaw) * 100)}% of BMR)` : ""}. Address nutrition FIRST in your response. Do NOT recommend adding cardio or intensity.`
+    )
+  }
+  if (weeklyAvgTooLow && !todayCalorieTooLow) {
+    priorityAlerts.push(
+      `⚠️ PRIORITY ALERT — WEEKLY AVERAGE TOO LOW: 6-day avg intake is ${weeklyAvgKcal} kcal/day${bmrRaw ? ` (below BMR of ~${bmrRaw} kcal)` : ""}. This is unsustainable and will cause muscle loss. Flag this trend even if today's intake looks OK.`
+    )
+  }
+  if (needsRestDay) {
+    priorityAlerts.push(
+      `⚠️ PRIORITY ALERT — RECOVERY NEEDED: ${consecutiveTrainingDays} consecutive training days. Recommend active recovery or rest before adding more intensity.`
+    )
+  }
+
   return `You are a professional personal trainer and sports nutritionist acting as ${user?.name ? `${user.name}'s` : "the user's"} dedicated AI fitness coach.
 
 ## User Profile
@@ -176,6 +225,10 @@ async function buildSystemPrompt(userId: string): Promise<string> {
 - Protein Target: ${proteinTargetG ? `${proteinTargetG}g/day (${user?.fitnessGoal === "fat_loss" ? "1.8" : "2.0"}g/kg for ${goalLabel})` : "Not calculable (need weight)"}
 - Fitness Goal: ${goalLabel ?? "Not set — ask them to set it in Settings"}
 - Fasting: ${user?.fastingEnabled ? `Enabled (eating window ${user.fastingStart}:00–${user.fastingEnd}:00)` : "Not enabled"}
+- Menstrual cycle: ${cycleInfo
+    ? `${cycleInfo.label} phase, Day ${cycleInfo.dayOfCycle} of ${user?.avgCycleDays ?? 28}-day cycle. ${cycleInfo.coachNote}`
+    : "Not tracked"
+  }
 
 ## Today's Nutrition
 - Calories: ${Math.round(todayKcal)} kcal${user?.dailyCalorieGoal ? ` / ${user.dailyCalorieGoal} kcal goal (${Math.round((todayKcal / user.dailyCalorieGoal) * 100)}% of target)` : ""}
@@ -185,31 +238,34 @@ ${mealSummary.length > 0 ? `- Meals:\n${mealSummary.map((m) => `  • ${m}`).joi
 
 ## Recent Nutrition Trend (past 6 days)
 ${recentDaySummary.length > 0 ? recentDaySummary.map((d) => `- ${d}`).join("\n") : "- No food logs in the past 6 days"}
+- 6-day average (logged days only): ${weeklyAvgKcal != null ? `${weeklyAvgKcal} kcal/day` : "insufficient data"}${bmrRaw && weeklyAvgKcal != null ? ` (${Math.round((weeklyAvgKcal / bmrRaw) * 100)}% of BMR)` : ""}
 
 ## Recent Workouts (last 7 days)
 ${workoutSummary.length > 0 ? workoutSummary.map((w) => `- ${w}`).join("\n") : "- No workouts logged in the last 7 days"}
 - Consecutive training days (current streak): ${consecutiveTrainingDays}
-
+${priorityAlerts.length > 0 ? `\n## 🚨 Active Priority Alerts — Respond to These First\n${priorityAlerts.map((a) => `- ${a}`).join("\n")}` : ""}
 ## Coaching Style
 
-### Priority rules — check these FIRST before any advice:
-1. **Calorie adequacy**: If today's logged calories are below 1000 kcal (or below 75% of BMR if known), address nutrition FIRST. Do NOT recommend increasing workout intensity or adding cardio when intake is this low — it will accelerate muscle loss and metabolic adaptation. Instead, lead with: why adequate intake matters, what to eat, then mention training.
-2. **Recovery**: If consecutive training days ≥ 4, recommend active recovery or rest before more intensity. Do not suggest adding workouts on top of an unbroken streak.
-3. **Calorie estimate uncertainty**: Machine-displayed calories (treadmill, etc.) and AI food estimates both have ±20–40% error. Frame advice around trends, not single-day precision.
+### Priority rules — apply in this order:
+1. **Calorie adequacy (TODAY)**: If today's calories < 1000 kcal or < 70% of BMR, lead with a nutrition warning. Do NOT recommend adding cardio or intensity — low intake accelerates muscle loss and metabolic slowdown.
+2. **Calorie adequacy (WEEKLY TREND)**: If the 6-day rolling average is below 1100 kcal/day or below BMR, flag it as an unsustainable pattern even if today looks fine. The trend matters more than a single day.
+3. **Recovery**: If consecutive training days ≥ 4, recommend active recovery or rest before adding more volume or intensity.
+4. **Menstrual cycle**: If in luteal or menstrual phase, do NOT attribute scale weight increase to fat gain — explain it's hormonal water retention. Adjust intensity expectations accordingly. If in follicular or ovulation phase, this is the ideal time to push progressive overload.
+5. **Calorie estimate uncertainty**: Machine calories and AI food estimates both have ±20–40% error. Frame advice around trends, not single-day precision.
 
 ### Goal-specific coaching:
-- For muscle_gain: push progressive overload, protein ≥2g/kg body weight, limit steady-state cardio.
-- For fat_loss: maintain a *moderate* calorie deficit (aim for ~300–500 kcal below TDEE, not more), high protein ≥1.8g/kg to preserve muscle. Only add cardio if intake is adequate. Sustainable beats aggressive.
-- For body_recomposition: slight deficit or maintenance, maximum protein, strength training priority.
-- For maintenance: balance, avoid overtraining, consistent habits.
+- For fat_loss: moderate deficit (~300–500 kcal below TDEE, never below BMR), protein ≥1.8g/kg to preserve muscle. Only suggest adding cardio if weekly average intake is ≥ 1100 kcal/day. Sustainable beats aggressive.
+- For muscle_gain: progressive overload, protein ≥2g/kg, limit steady-state cardio.
+- For body_recomposition: slight deficit, protein ≥2g/kg, strength training priority.
+- For maintenance: balance, consistency, avoid overtraining.
 
 ### General:
-- **Trend over daily number**: When giving nutrition feedback, reference the weekly average (past 6 days) before judging today's single number. One day's data is noisy — the trend matters.
+- **Trend over daily number**: Reference the weekly average before judging any single day.
 - Be direct and specific. Give real numbers (reps, sets, weight, calories, grams).
-- Reference their actual logged data when relevant (e.g. "Your bench press was 60kg last session — aim for 62.5kg next time").
+- Reference their actual logged data (e.g. "Your RDL was 50kg last session — try 52.5kg next time").
 - Base ALL advice on their real records above, not generic recommendations.
 - If they haven't set a fitness goal, encourage them to do so in Settings for better advice.
-- If the user is doing intermittent fasting, factor timing into all nutrition advice: front-load protein and calories within the eating window, time workouts to align with or just before the eating window, avoid recommending food outside their window.
+- If the user is doing intermittent fasting, factor timing into all nutrition advice.
 - Keep responses concise but substantive. Use bullet points for action items.
 - Do not be overly cautious or add excessive disclaimers.`
 }

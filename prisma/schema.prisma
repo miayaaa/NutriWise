@@ -56,17 +56,21 @@ model User {
   fastingEnabled   Boolean   @default(false) @map(name: "fasting_enabled")
   fastingStart     Int       @default(12) @map(name: "fasting_start")
   fastingEnd       Int       @default(20) @map(name: "fasting_end")
+  lastPeriodDate   DateTime? @map(name: "last_period_date")
+  avgCycleDays     Int       @default(28) @map(name: "avg_cycle_days")
   createdAt        DateTime  @default(now()) @map(name: "created_at")
   updatedAt        DateTime  @updatedAt @map(name: "updated_at")
 
-  accounts    Account[]
-  sessions    Session[]
-  activities  Activity[]
-  foodLogs    FoodLog[]
-  waterLogs   WaterLog[]
-  weightLogs  WeightLog[]
-  workoutLogs WorkoutLog[]
-  coachInsights CoachInsight[]
+  accounts         Account[]
+  sessions         Session[]
+  activities       Activity[]
+  foodLogs         FoodLog[]
+  waterLogs        WaterLog[]
+  weightLogs       WeightLog[]
+  workoutLogs      WorkoutLog[]
+  coachInsights    CoachInsight[]
+  bodyMeasurements BodyMeasurement[]
+  workoutTemplates WorkoutTemplate[]
 
   @@map(name: "users")
 }
@@ -167,6 +171,32 @@ model WorkoutLog {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map(name: "workout_logs")
+}
+
+model BodyMeasurement {
+  id        String   @id @default(cuid())
+  userId    String   @map(name: "user_id")
+  waistCm   Float?   @map(name: "waist_cm")
+  hipCm     Float?   @map(name: "hip_cm")
+  feelScore Int?     @map(name: "feel_score") // 1-5
+  notes     String?  @db.Text
+  date      DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map(name: "body_measurements")
+}
+
+model WorkoutTemplate {
+  id        String   @id @default(cuid())
+  userId    String   @map(name: "user_id")
+  name      String
+  cycleDay  Int?     @map(name: "cycle_day")
+  exercises Json     // TemplateExercise[]
+  sortOrder Int      @default(0) @map(name: "sort_order")
+  createdAt DateTime @default(now()) @map(name: "created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map(name: "workout_templates")
 }
 
 model CoachInsight {

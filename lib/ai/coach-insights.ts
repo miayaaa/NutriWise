@@ -72,11 +72,6 @@ function fallbackCoachInsight(metrics: CoachInsightMetrics): CoachInsightResult 
     metrics.weight.logCount >= 2
       ? `Weight trend ${metrics.weight.changeKg > 0 ? "+" : ""}${metrics.weight.changeKg.toFixed(1)} kg.`
       : "Weight trend needs more logs."
-  const workoutDaysScore = Math.min(metrics.workout.sessionCount * 10, 40)
-  const hydrationScore = Math.round(hydrationPct * 0.3)
-  const nutritionScore = metrics.nutrition.mealCount > 0 ? 30 : 10
-  const score = Math.max(20, Math.min(100, workoutDaysScore + hydrationScore + nutritionScore))
-
   const goal = metrics.fitnessGoal
   const bodyWeightKg = metrics.weight.currentKg ?? 70
   const proteinTarget = Math.round(bodyWeightKg * (goal === "fat_loss" ? 1.8 : 2.0))
@@ -86,8 +81,17 @@ function fallbackCoachInsight(metrics: CoachInsightMetrics): CoachInsightResult 
 
   const avgDailyKcal = metrics.nutrition.avgCaloriesPerLoggedDay
   const bmr = metrics.profile.bmrKcal
-  const intakeIsCriticallyLow = avgDailyKcal > 0 && (avgDailyKcal < 1000 || (bmr != null && avgDailyKcal < bmr * 0.75))
+  // Gate is 1100 kcal or 80% of BMR — anything below this means the user is under-eating
+  // enough that adding cardio or intensity is counterproductive (muscle loss risk)
+  const intakeIsCriticallyLow = avgDailyKcal > 0 && (avgDailyKcal < 1100 || (bmr != null && avgDailyKcal < bmr * 0.80))
   const intakeIsAdequate = !intakeIsCriticallyLow
+
+  const workoutDaysScore = Math.min(metrics.workout.sessionCount * 10, 40)
+  const hydrationScore = Math.round(hydrationPct * 0.3)
+  const nutritionScore = metrics.nutrition.mealCount > 0 ? 30 : 10
+  // Penalise dangerously low intake: eating below 80% of BMR undermines any fitness goal
+  const lowIntakePenalty = intakeIsCriticallyLow ? -15 : 0
+  const score = Math.max(20, Math.min(100, workoutDaysScore + hydrationScore + nutritionScore + lowIntakePenalty))
 
   const actionItems = [
     `Keep hydration above ${Math.round(metrics.hydration.dailyGoalMl * 0.9)} ml/day.`,

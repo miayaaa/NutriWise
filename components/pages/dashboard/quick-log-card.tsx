@@ -165,12 +165,12 @@ export function QuickLogCard() {
 
       {/* Workout dialog */}
       <Credenza open={open === "workout"} onOpenChange={(o) => { if (!o) setOpen(null) }}>
-        <CredenzaContent className="max-h-[90dvh] overflow-y-auto" style={drawerStyle}>
+        <CredenzaContent className="flex flex-col max-h-[90dvh]" style={drawerStyle}>
           <CredenzaHeader>
             <CredenzaTitle>Log Workout</CredenzaTitle>
             <CredenzaDescription>Track strength, cardio, or any custom session.</CredenzaDescription>
           </CredenzaHeader>
-          <div className="px-4 pb-6">
+          <div className="px-4 pb-6 overflow-y-auto flex-1">
             <WorkoutLogForm onSuccess={() => setOpen(null)} />
           </div>
         </CredenzaContent>

@@ -13,51 +13,30 @@
 | File | Purpose |
 |---|---|
 | `app/api/ai/chat/route.ts` | Streaming coach chat; `buildSystemPrompt()` injects all user context |
-| `app/api/ai/estimate/route.ts` | Food calorie estimation (JSON-only output) |
+| `app/api/ai/estimate/route.ts` | Food calorie estimation (JSON-only output); returns `confidence` high/medium/low |
 | `app/api/coach/insights/route.ts` | Triggers periodic insight generation, handles caching |
 | `lib/ai/coach-insights.ts` | Claude prompt + fallback for 7/30/90d insights |
 | `lib/ai/calories.ts` | Food estimation prompt |
 | `lib/ai/workout.ts` | Post-workout comment generation |
 | `lib/api/coach-insights.ts` | DB queries: aggregate metrics for insights |
 
-## AI Coaching — Known Issues & Improvements Needed
+## AI Coaching Behaviour
 
-### Problem 1: Recommends more intensity without checking calorie adequacy
+All five original coaching issues have been addressed:
 
-**Root cause**: The chat system prompt says "For fat_loss: add cardio frequency" with no guard condition. Claude can see today's calories in context but has no instruction to prioritize nutrition warnings above exercise advice.
+1. **Calorie adequacy (chat)** — `buildSystemPrompt()` computes `todayCalorieTooLow` (< 1000 kcal or < 70% BMR) and `weeklyAvgTooLow` (< 1100 kcal or < BMR). Active alerts are injected into the prompt as `🚨 Active Priority Alerts` and the coaching style section has explicit priority rules: nutrition warning before any workout advice when intake is critically low.
 
-**Fix**: Add explicit priority rules at the top of the coaching style section in `buildSystemPrompt()` (`app/api/ai/chat/route.ts`):
-- If today's calories < 1000 kcal (or < 70% of BMR), lead with a nutrition warning before any workout advice
-- Never recommend increasing workout intensity on days with extreme calorie deficit
-- Flag if weekly average intake is below BMR
+2. **Fallback insights** — `fallbackCoachInsight()` gates the cardio recommendation on `intakeIsAdequate`. If intake is critically low, the action item is replaced with a nutrition adequacy warning. Score gets a `−15` penalty when `avgCaloriesPerLoggedDay < 1100` or `< BMR * 0.80`.
 
-### Problem 2: Fallback insights ignore calorie intake entirely
+3. **Consecutive training days** — calculated in both `buildSystemPrompt()` and `fallbackCoachInsight()`. Chat prompt injects a `⚠️ PRIORITY ALERT — RECOVERY NEEDED` when ≥ 4 consecutive days are logged.
 
-**Root cause**: `fallbackCoachInsight()` in `lib/ai/coach-insights.ts` always adds "Add one 20-min cardio session" for fat_loss regardless of `metrics.nutrition.avgCaloriesPerLoggedDay`.
+4. **Calorie estimate uncertainty** — `confidence` (high/medium/low) is returned by the estimate API and surfaced in `quick-food-log.tsx` via `CONFIDENCE_CONFIG`. Machine kcal in the chat prompt is labelled `(±30% estimate)`.
 
-**Fix**: Gate the cardio recommendation on adequate average intake (e.g., `>= 1100 kcal/day`). If intake is too low, replace with a nutrition adequacy action item.
+5. **Insight score penalty** — implemented in `fallbackCoachInsight()` via `lowIntakePenalty`.
 
-### Problem 3: No consecutive training days awareness
+## Coaching Philosophy
 
-**Root cause**: The workout summary in `buildSystemPrompt()` lists recent workouts but the system prompt doesn't instruct Claude to check for rest day needs.
-
-**Fix**: Calculate consecutive training days from `recentWorkouts` and add to context. Add coaching instruction: if ≥ 4 consecutive days logged, recommend active recovery before more intensity.
-
-### Problem 4: Calorie estimates are presented as precise
-
-**Root cause**: AI returns a single kcal number with no uncertainty framing. For mixed-ingredient foods (pies, dumplings), real error can be ±30-40%.
-
-**Fix**: The estimate API already returns a `confidence` field (high/medium/low) — surface this in the UI when confidence is not "high". Consider displaying as a range on medium/low confidence.
-
-### Problem 5: Insights treat every metric equally
-
-**Root cause**: The insight score formula in fallback weights workout sessions (max 40 pts) but doesn't penalize dangerously low intake.
-
-**Fix**: Add a penalty to the score when `avgCaloriesPerLoggedDay` is below `bmrKcal * 0.8`.
-
-## Coaching Philosophy to Encode
-
-The goal is sustainable fat loss / muscle gain, not maximum short-term effort. The AI should reflect this:
+The goal is sustainable fat loss / muscle gain, not maximum short-term effort:
 
 1. **Nutrition first** — adequate intake > more exercise. A 500 kcal deficit is correct; an 800+ kcal deficit is counterproductive.
 2. **Trend over daily number** — weekly average matters more than any single day's log.
@@ -68,13 +47,16 @@ The goal is sustainable fat loss / muscle gain, not maximum short-term effort. T
 ## Data Model Summary
 
 ```
-User         → goals (calorie, water, weight), profile (age, gender, height), fasting schedule
-FoodLog      → description, mealType, aiCalories, protein, carbs, fat, localDate (timezone-safe)
-WorkoutLog   → type, durationMin, details (JSON: mode/strength/cardio/other)
-WaterLog     → amount (ml), date
-WeightLog    → weightKg, date
-CoachInsight → rangeType (7d/30d/90d), summary, coachComment, actionItems[], score, cached 12h
-Activity     → custom activities (hobbies, habits) with optional food tracking
+User              → goals (calorie, water, weight), profile (age, gender, height), fasting schedule,
+                    lastPeriodDate + avgCycleDays (menstrual cycle tracking)
+FoodLog           → description, mealType, aiCalories, protein, carbs, fat, localDate (timezone-safe)
+WorkoutLog        → type, durationMin, details (JSON: mode/strength/cardio/other)
+WaterLog          → amount (ml), date
+WeightLog         → weightKg, date
+BodyMeasurement   → waistCm, hipCm, feelScore, notes, date
+WorkoutTemplate   → name, description, exercises (JSON), cycleDay (1-4 periodisation)
+CoachInsight      → rangeType (7d/30d/90d), summary, coachComment, actionItems[], score, cached 12h
+Activity          → custom activities (hobbies, habits) with optional food tracking
 ```
 
 ## Common Patterns

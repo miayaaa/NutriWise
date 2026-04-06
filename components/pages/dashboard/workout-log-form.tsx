@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Icons } from "@/components/icons"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
+import { WorkoutTemplatePanel } from "@/components/pages/dashboard/workout-template-panel"
 
 type WorkoutMode = "strength" | "cardio" | "other"
 
@@ -200,8 +201,31 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
     }
   }
 
+  function handleTemplateFillStrength(data: { name: string; sets: number; reps: number; durationMin?: number }) {
+    setMode("strength")
+    setExerciseName(data.name)
+    setSets(String(data.sets))
+    setReps(String(data.reps))
+    if (data.durationMin) setDurationMin(String(data.durationMin))
+  }
+
+  function handleTemplateFillCardio(data: { cardioType: string; inclinePct?: number; durationMin: number }) {
+    setMode("cardio")
+    const preset = CARDIO_PRESETS.includes(data.cardioType) ? data.cardioType : "Other"
+    setCardioType(preset)
+    if (preset === "Other") setCustomCardioType(data.cardioType)
+    if (data.inclinePct !== undefined) setInclinePct(String(data.inclinePct))
+    setDurationMin(String(data.durationMin))
+  }
+
   return (
     <div className="space-y-4 pb-2">
+      {/* Template quick-start panel */}
+      <WorkoutTemplatePanel
+        onFillStrength={handleTemplateFillStrength}
+        onFillCardio={handleTemplateFillCardio}
+      />
+
       {/* Workout mode */}
       <div className="space-y-2">
         <p className="text-sm font-medium">Workout category</p>

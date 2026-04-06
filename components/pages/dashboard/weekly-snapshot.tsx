@@ -20,12 +20,18 @@ interface WeeklySnapshotProps {
 
 function StreakBadge({ count, label }: { count: number; label: string }) {
   const isActive = count > 0
+  const milestone = count >= 100 ? "🏆 100 days!" : count >= 30 ? "⭐ 30 days!" : count >= 14 ? "🎉 2 weeks!" : count >= 7 ? "🔥 1 week!" : null
+  const intensity = count >= 30 ? "text-red-500" : count >= 14 ? "text-orange-500" : count >= 7 ? "text-orange-400" : "text-orange-300"
   return (
     <div className={`flex flex-col items-center justify-center rounded-xl px-4 py-3 flex-1 ${isActive ? "bg-orange-50 dark:bg-orange-950/30" : "bg-muted/50"}`}>
-      <div className={`text-2xl font-bold tabular-nums leading-none ${isActive ? "text-orange-500" : "text-muted-foreground"}`}>
-        {count}
+      <div className="flex items-baseline gap-1">
+        <div className={`text-2xl font-bold tabular-nums leading-none ${isActive ? intensity : "text-muted-foreground"}`}>
+          {count}
+        </div>
+        {isActive && <span className="text-base">🔥</span>}
       </div>
       <div className="text-[11px] text-muted-foreground mt-1 text-center leading-tight">{label}</div>
+      {milestone && <div className="text-[10px] font-medium text-orange-500 mt-0.5">{milestone}</div>}
     </div>
   )
 }
@@ -202,13 +208,13 @@ export function WeeklySnapshot({
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Workout days</span>
             <span className="font-medium tabular-nums">
-              {workoutDaysThisWeek} / 7
+              {workoutDaysThisWeek} / 4
               {totalWorkoutMinThisWeek > 0 && (
                 <span className="text-muted-foreground font-normal ml-1">· {totalWorkoutMinThisWeek} min</span>
               )}
             </span>
           </div>
-          <WeekDots filled={workoutDaysThisWeek} />
+          <WeekDots filled={workoutDaysThisWeek} total={4} />
         </div>
 
         {daysLoggedFood === 0 && workoutDaysThisWeek === 0 && (

@@ -32,7 +32,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => {
 })
 
 const PRESETS = [
-  { label: "12 PM – 8 PM（推荐）", start: 12, end: 20 },
+  { label: "12 PM – 8 PM (recommended)", start: 12, end: 20 },
   { label: "11 AM – 7 PM", start: 11, end: 19 },
   { label: "10 AM – 6 PM", start: 10, end: 18 },
   { label: "1 PM – 9 PM", start: 13, end: 21 },

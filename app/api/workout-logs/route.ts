@@ -49,6 +49,26 @@ const bodySchema = z.object({
   analysisContext: analysisContextSchema.optional(),
 })
 
+export async function GET(req: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) return new Response("Unauthorized", { status: 403 })
+
+    const url = new URL(req.url)
+    const limit = Math.min(Number(url.searchParams.get("limit") ?? "20"), 100)
+
+    const logs = await db.workoutLog.findMany({
+      where: { userId: session.user.id },
+      select: { id: true, type: true, durationMin: true, details: true, notes: true, aiComment: true, date: true },
+      orderBy: { date: "desc" },
+      take: Number.isFinite(limit) ? limit : 20,
+    })
+    return Response.json(logs)
+  } catch {
+    return new Response(null, { status: 500 })
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions)

@@ -93,6 +93,24 @@ export async function PATCH(
       return new Response(null, { status: 200 })
     }
 
+    // Menstrual cycle update
+    if (body.lastPeriodDate !== undefined || body.avgCycleDays !== undefined) {
+      const cycleSchema = z.object({
+        lastPeriodDate: z.string().nullable().optional(),
+        avgCycleDays: z.number().int().min(21).max(45).optional(),
+      })
+      const payload = cycleSchema.parse(body)
+      await db.user.update({
+        where: { id: session.user.id },
+        data: {
+          lastPeriodDate: payload.lastPeriodDate ? new Date(payload.lastPeriodDate) : null,
+          ...(payload.avgCycleDays !== undefined && { avgCycleDays: payload.avgCycleDays }),
+          updatedAt: new Date(),
+        },
+      })
+      return new Response(null, { status: 200 })
+    }
+
     // Name update
     const payload = userNameSchema.parse(body)
     await db.user.update({
