@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useSearchParams } from "next/navigation"
 import { ClientSafeProvider, getProviders, signIn } from "next-auth/react"
 
 import { cn } from "@/lib/utils"
@@ -11,12 +10,16 @@ import { Icons } from "@/components/icons"
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
-  const searchParams = useSearchParams()
   const [providers, setProviders] = React.useState<Record<string, ClientSafeProvider> | null>(null)
   const [isLoading, setIsLoading] = React.useState<boolean>(false)
   const [isGoogleLoading, setIsGoogleLoading] = React.useState<boolean>(false)
   const [isGithubLoading, setIsGithubLoading] = React.useState<boolean>(false)
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
+
+  const getCallbackUrl = React.useCallback(() => {
+    if (typeof window === "undefined") return "/dashboard"
+
+    return new URLSearchParams(window.location.search).get("callbackUrl") || "/dashboard"
+  }, [])
 
   React.useEffect(() => {
     let isMounted = true
@@ -44,7 +47,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
           onClick={() => {
             setIsGoogleLoading(true)
             setIsLoading(true)
-            signIn("google", { callbackUrl })
+            signIn("google", { callbackUrl: getCallbackUrl() })
           }}
           disabled={isGoogleLoading || isLoading}
         >
@@ -63,7 +66,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
           onClick={() => {
             setIsGithubLoading(true)
             setIsLoading(true)
-            signIn("github", { callbackUrl })
+            signIn("github", { callbackUrl: getCallbackUrl() })
           }}
           disabled={isGithubLoading || isLoading}
         >
@@ -88,7 +91,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
         className={cn(buttonVariants({ variant: "ghost" }), "text-muted-foreground")}
         onClick={() => {
           setIsLoading(true)
-          signIn("guest", { callbackUrl })
+          signIn("guest", { callbackUrl: getCallbackUrl() })
         }}
         disabled={isLoading}
       >

@@ -1,7 +1,5 @@
 import { Metadata } from "next"
 import Link from "next/link"
-import { Suspense } from "react"
-
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import { Icons } from "@/components/icons"
@@ -34,9 +32,7 @@ export default function Signin() {
             Sign in to your account
           </p>
         </div>
-        <Suspense fallback={<div className="h-20" />}>
-          <UserAuthForm />
-        </Suspense>
+        <UserAuthForm />
         <p className="px-8 text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
           <Link
