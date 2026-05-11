@@ -244,6 +244,52 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
       }
     }
 
+    async function quickLogMeal(meal: RecentMeal) {
+      if (isLogging || meal.aiCalories == null) return
+      setIsLogging(true)
+      try {
+        const now = new Date()
+        const res = await fetch("/api/food-logs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            foodDescription: meal.foodDescription,
+            mealType,
+            aiCalories: meal.aiCalories,
+            protein: meal.protein,
+            carbs: meal.carbs,
+            fat: meal.fat,
+            aiComment: meal.aiComment,
+            date: now.toISOString(),
+            localDate: toDateStr(now),
+          }),
+        })
+        if (!res.ok) { toast({ title: "Save failed", variant: "destructive" }); return }
+        const result = await res.json() as { id: string; aiCalories?: number }
+        const kcal = result.aiCalories ?? meal.aiCalories
+        router.refresh()
+        onSuccess?.()
+        toast({
+          description: `${meal.foodDescription} — ${Math.round(kcal!)} kcal logged.`,
+          action: (
+            <button
+              className="rounded px-2 py-1 text-xs font-medium underline-offset-2 hover:underline"
+              onClick={async () => {
+                await fetch(`/api/food-logs/${result.id}`, { method: "DELETE" })
+                router.refresh()
+              }}
+            >
+              Undo
+            </button>
+          ),
+        })
+      } catch {
+        toast({ title: "Network error", variant: "destructive" })
+      } finally {
+        setIsLogging(false)
+      }
+    }
+
     async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
       const file = e.target.files?.[0]
       if (!file) return
@@ -392,19 +438,31 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
             <p className="text-xs text-muted-foreground">Recent</p>
             <div className="flex flex-wrap gap-1.5">
               {recentMeals.map((meal, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  disabled={isLogging}
-                  onClick={() => applyRecentMeal(meal)}
-                  className="max-w-[200px] truncate rounded-full border border-border bg-muted/50 px-3 py-1 text-xs text-foreground/70 hover:bg-muted hover:text-foreground transition-colors"
-                  title={meal.foodDescription ?? ""}
-                >
+                <div key={i} className="flex items-center rounded-full border border-border bg-muted/50 overflow-hidden">
+                  <button
+                    type="button"
+                    disabled={isLogging}
+                    onClick={() => applyRecentMeal(meal)}
+                    className="max-w-[180px] truncate px-3 py-1 text-xs text-foreground/70 hover:text-foreground transition-colors"
+                    title={meal.foodDescription ?? ""}
+                  >
+                    {meal.aiCalories != null && (
+                      <span className="mr-1.5 font-medium tabular-nums text-foreground/50">{Math.round(meal.aiCalories)}</span>
+                    )}
+                    {meal.foodDescription}
+                  </button>
                   {meal.aiCalories != null && (
-                    <span className="mr-1.5 font-medium tabular-nums text-foreground/50">{Math.round(meal.aiCalories)}</span>
+                    <button
+                      type="button"
+                      disabled={isLogging}
+                      onClick={() => quickLogMeal(meal)}
+                      className="border-l border-border px-2 py-1 text-xs text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                      title="Log now"
+                    >
+                      +
+                    </button>
                   )}
-                  {meal.foodDescription}
-                </button>
+                </div>
               ))}
             </div>
           </div>
