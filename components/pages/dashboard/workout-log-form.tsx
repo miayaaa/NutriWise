@@ -144,7 +144,7 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
             reps: Number(r.reps),
             weightKg: r.weightKg ? Number(r.weightKg) : undefined,
           })),
-          restSec: restSec ? Number(restSec) : undefined,
+          restSec: restSec ? Math.round(Number(restSec)) : undefined,
         },
       }
     }
@@ -228,6 +228,7 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
     const trimmedNotes = notes.trim()
 
     try {
+      const durationInt = Math.round(duration)
       const results = await Promise.all(
         session.map((item) =>
           fetch("/api/workout-logs", {
@@ -235,7 +236,7 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               type: item.label,
-              durationMin: duration,
+              durationMin: durationInt,
               notes: trimmedNotes || undefined,
               analysisContext: item.analysisContext,
             }),
@@ -243,7 +244,10 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
         )
       )
 
-      if (results.some((r) => !r.ok)) {
+      const failed = results.filter((r) => !r.ok)
+      if (failed.length > 0) {
+        const bodies = await Promise.all(failed.map((r) => r.text().catch(() => "")))
+        console.error("Workout save errors:", bodies)
         toast({ title: "Error", description: "Some exercises could not be saved.", variant: "destructive" })
         return
       }
@@ -477,7 +481,7 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
           <div className="space-y-1">
             <p className="text-sm font-medium">Total session duration (minutes)</p>
             <Input
-              type="number" inputMode="decimal" min={1} max={600}
+              type="number" inputMode="numeric" min={1} max={600}
               value={durationMin}
               onChange={(e) => setDurationMin(e.target.value)}
               placeholder="e.g. 60"
