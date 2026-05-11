@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { AiOutlinePlus, AiOutlineClose } from "react-icons/ai"
 import { BsDropletFill, BsFire } from "react-icons/bs"
 import { MdFastfood } from "react-icons/md"
@@ -18,8 +18,6 @@ import {
 } from "@/components/ui/drawer"
 import { QuickFoodLog } from "@/components/pages/dashboard/quick-food-log"
 import { WaterQuickLog } from "@/components/pages/dashboard/water-quick-log"
-import { WorkoutLogForm } from "@/components/pages/dashboard/workout-log-form"
-
 type LogType = "food" | "water" | "workout"
 
 const LOG_OPTIONS: { type: LogType; label: string; icon: React.ReactNode; color: string }[] = [
@@ -35,12 +33,17 @@ const NAV_RIGHT = [dashboardLinks.data[2], dashboardLinks.data[3]]  // Coach, Se
 
 export function MobileBottomNav() {
   const path = usePathname()
+  const router = useRouter()
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [logType, setLogType] = React.useState<LogType | null>(null)
 
   function openLog(type: LogType) {
     setMenuOpen(false)
-    setLogType(type)
+    if (type === "workout") {
+      router.push("/dashboard/log-workout")
+    } else {
+      setLogType(type)
+    }
   }
 
   function NavLink({ item }: { item: (typeof dashboardLinks.data)[number] }) {
@@ -55,8 +58,6 @@ export function MobileBottomNav() {
       </Link>
     )
   }
-
-  const drawerTitle = logType === "food" ? "Log Food" : logType === "workout" ? "Log Workout" : ""
 
   return (
     <>
@@ -114,15 +115,14 @@ export function MobileBottomNav() {
         </>
       )}
 
-      {/* Food / Workout drawers */}
-      <Drawer open={logType === "food" || logType === "workout"} onOpenChange={(o) => { if (!o) setLogType(null) }}>
+      {/* Food drawer */}
+      <Drawer open={logType === "food"} onOpenChange={(o) => { if (!o) setLogType(null) }}>
         <DrawerContent className="max-h-[90dvh]">
           <DrawerHeader>
-            <DrawerTitle>{drawerTitle}</DrawerTitle>
+            <DrawerTitle>Log Food</DrawerTitle>
           </DrawerHeader>
           <div className="overflow-y-auto px-4 pb-8">
-            {logType === "food" && <QuickFoodLog onSuccess={() => setLogType(null)} />}
-            {logType === "workout" && <WorkoutLogForm onSuccess={() => setLogType(null)} />}
+            <QuickFoodLog onSuccess={() => setLogType(null)} />
           </div>
         </DrawerContent>
       </Drawer>

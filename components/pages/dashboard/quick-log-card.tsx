@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { BsDropletFill, BsFire } from "react-icons/bs"
 import { MdFastfood } from "react-icons/md"
 
@@ -15,11 +16,9 @@ import {
   CredenzaDescription,
   CredenzaHeader,
   CredenzaTitle,
-  CredenzaTrigger,
 } from "@/components/ui/credenza"
 import { QuickFoodLog, type QuickFoodLogHandle } from "@/components/pages/dashboard/quick-food-log"
 import { WaterQuickLog } from "@/components/pages/dashboard/water-quick-log"
-import { WorkoutLogForm } from "@/components/pages/dashboard/workout-log-form"
 
 const LOG_ACTIONS = [
   {
@@ -54,6 +53,7 @@ const LOG_ACTIONS = [
 type LogKey = (typeof LOG_ACTIONS)[number]["key"]
 
 export function QuickLogCard() {
+  const router = useRouter()
   const [open, setOpen] = React.useState<LogKey | null>(null)
   const foodLogRef = React.useRef<QuickFoodLogHandle>(null)
   const [foodCanLog, setFoodCanLog] = React.useState(false)
@@ -91,7 +91,7 @@ export function QuickLogCard() {
             return (
               <button
                 key={action.key}
-                onClick={() => setOpen(action.key)}
+                onClick={() => action.key === "workout" ? router.push("/dashboard/log-workout") : setOpen(action.key)}
                 className={cn(
                   "flex cursor-pointer flex-col items-center gap-2 rounded-xl border p-3 transition-colors duration-200 active:scale-95",
                   action.bg,
@@ -163,18 +163,6 @@ export function QuickLogCard() {
         </CredenzaContent>
       </Credenza>
 
-      {/* Workout dialog */}
-      <Credenza open={open === "workout"} onOpenChange={(o) => { if (!o) setOpen(null) }}>
-        <CredenzaContent className="flex flex-col max-h-[90dvh]" style={drawerStyle}>
-          <CredenzaHeader>
-            <CredenzaTitle>Log Workout</CredenzaTitle>
-            <CredenzaDescription>Track strength, cardio, or any custom session.</CredenzaDescription>
-          </CredenzaHeader>
-          <div className="px-4 pb-6 overflow-y-auto flex-1">
-            <WorkoutLogForm onSuccess={() => setOpen(null)} />
-          </div>
-        </CredenzaContent>
-      </Credenza>
     </>
   )
 }
