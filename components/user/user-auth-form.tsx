@@ -91,7 +91,13 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
         className={cn(buttonVariants({ variant: "ghost" }), "text-muted-foreground")}
         onClick={() => {
           setIsLoading(true)
-          signIn("guest", { callbackUrl: getCallbackUrl() })
+          const key = "nutriwise_guest_id"
+          let guestId = localStorage.getItem(key)
+          if (!guestId) {
+            guestId = crypto.randomUUID().replace(/-/g, "")
+            localStorage.setItem(key, guestId)
+          }
+          signIn("guest", { callbackUrl: getCallbackUrl(), guestId })
         }}
         disabled={isLoading}
       >

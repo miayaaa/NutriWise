@@ -31,9 +31,13 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       id: "guest",
       name: "Guest",
-      credentials: {},
-      async authorize() {
-        const guestEmail = "guest@nutriwise.app"
+      credentials: {
+        guestId: { type: "text" },
+      },
+      async authorize(credentials) {
+        const guestId = credentials?.guestId?.trim()
+        if (!guestId || !/^[a-zA-Z0-9_-]{8,64}$/.test(guestId)) return null
+        const guestEmail = `guest-${guestId}@nutriwise.app`
         const existing = await db.user.findUnique({ where: { email: guestEmail } })
         if (existing) return { id: existing.id, email: existing.email, name: existing.name }
         const created = await db.user.create({ data: { email: guestEmail, name: "Guest" } })
