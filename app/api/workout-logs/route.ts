@@ -2,7 +2,6 @@ import { Prisma } from "@prisma/client"
 import { getServerSession } from "next-auth/next"
 import { z } from "zod"
 
-import { generateWorkoutComment } from "@/lib/ai/workout"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 
@@ -78,12 +77,6 @@ export async function POST(req: Request) {
     if (!session?.user) return new Response("Unauthorized", { status: 403 })
 
     const body = bodySchema.parse(await req.json())
-    const aiComment = await generateWorkoutComment(
-      body.type,
-      body.durationMin,
-      body.notes,
-      body.analysisContext
-    )
 
     const log = await db.workoutLog.create({
       data: {
@@ -92,7 +85,6 @@ export async function POST(req: Request) {
         durationMin: body.durationMin,
         details: body.analysisContext as Prisma.InputJsonValue | undefined,
         notes: body.notes,
-        aiComment,
       },
       select: { id: true, type: true, durationMin: true, details: true, notes: true, aiComment: true, date: true },
     })

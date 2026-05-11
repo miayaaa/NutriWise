@@ -78,7 +78,7 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
   const [durationMin, setDurationMin] = React.useState("")
   const [notes, setNotes] = React.useState("")
   const [isLogging, setIsLogging] = React.useState(false)
-  const [aiComment, setAiComment] = React.useState<string | null>(null)
+  const [prefilled, setPrefilled] = React.useState(false)
 
   const selectedCardioType = cardioType === "Other" ? customCardioType.trim() : cardioType
   const duration = Number(durationMin)
@@ -113,10 +113,31 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
     return otherType.trim() || "Workout"
   }
 
+  async function lookupLastPerf(name: string) {
+    try {
+      const res = await fetch(`/api/workout-logs/last-performance?exercises=${encodeURIComponent(name)}`)
+      if (!res.ok) return
+      const data = await res.json() as Record<string, { setRows?: Array<{ reps: number; weightKg?: number }>; sets?: number; reps?: number; weightKg?: number }>
+      const perf = data[name] ?? data[Object.keys(data)[0]]
+      if (!perf) return
+      if (perf.setRows && perf.setRows.length > 0) {
+        setSetRows(perf.setRows.map((r) => ({ reps: String(r.reps), weightKg: r.weightKg ? String(r.weightKg) : "" })))
+      } else if (perf.sets && perf.reps) {
+        setSetRows(Array.from({ length: perf.sets }, () => ({ reps: String(perf.reps), weightKg: perf.weightKg ? String(perf.weightKg) : "" })))
+      } else {
+        return
+      }
+      setPrefilled(true)
+    } catch {
+      // silent
+    }
+  }
+
   function resetForm() {
     setMode("strength")
     setExerciseName("")
     setSetRows([{ reps: "", weightKg: "" }])
+    setPrefilled(false)
     setRestSec("")
     setCardioType("Treadmill")
     setCustomCardioType("")
@@ -171,7 +192,6 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
   async function handleLog() {
     if (!canLog) return
     setIsLogging(true)
-    setAiComment(null)
 
     const workoutType = getWorkoutTypeLabel()
     const analysisContext = buildAnalysisContext()
@@ -192,33 +212,25 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
         toast({ title: "Error", description: "Could not save workout.", variant: "destructive" })
         return
       }
-      const result = await res.json()
-      if (result.aiComment) setAiComment(result.aiComment)
       toast({ description: `${workoutType} ${duration} min logged.` })
       resetForm()
       router.refresh()
-      if (result.aiComment) {
-        setTimeout(() => {
-          setAiComment(null)
-          onSuccess?.()
-        }, 3000)
-      } else {
-        onSuccess?.()
-      }
+      onSuccess?.()
     } finally {
       setIsLogging(false)
     }
   }
 
-  function handleTemplateFillStrength(data: { name: string; sets: number; reps: number; weightKg?: number; durationMin?: number }) {
+  function handleTemplateFillStrength(data: { name: string; sets: number; reps: number; weightKg?: number; setRows?: Array<{ reps: number; weightKg?: number }>; durationMin?: number }) {
     setMode("strength")
     setExerciseName(data.name)
-    setSetRows(
-      Array.from({ length: data.sets }, () => ({
-        reps: String(data.reps),
-        weightKg: data.weightKg ? String(data.weightKg) : "",
-      }))
-    )
+    if (data.setRows && data.setRows.length > 0) {
+      setSetRows(data.setRows.map((r) => ({ reps: String(r.reps), weightKg: r.weightKg ? String(r.weightKg) : "" })))
+      setPrefilled(true)
+    } else {
+      setSetRows(Array.from({ length: data.sets }, () => ({ reps: String(data.reps), weightKg: data.weightKg ? String(data.weightKg) : "" })))
+      setPrefilled(!!data.weightKg)
+    }
     if (data.durationMin) setDurationMin(String(data.durationMin))
   }
 
@@ -264,11 +276,17 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
       {mode === "strength" && (
         <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
           <p className="text-sm font-medium">Strength details</p>
-          <Input
-            value={exerciseName}
-            onChange={(e) => setExerciseName(e.target.value)}
-            placeholder="Exercise (e.g. Barbell Squat)"
-          />
+          <div className="space-y-1">
+            <Input
+              value={exerciseName}
+              onChange={(e) => { setExerciseName(e.target.value); setPrefilled(false) }}
+              onBlur={() => { if (exerciseName.trim()) void lookupLastPerf(exerciseName.trim()) }}
+              placeholder="Exercise (e.g. Barbell Squat)"
+            />
+            {prefilled && (
+              <p className="text-xs text-muted-foreground pl-0.5">↑ pre-filled from last session</p>
+            )}
+          </div>
           <div className="space-y-1.5">
             <div className="grid grid-cols-[1.5rem_1fr_1fr_1.5rem] gap-2 px-0.5">
               <span className="text-xs text-muted-foreground text-center">#</span>
@@ -468,13 +486,6 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
           rows={3}
         />
       </div>
-
-      {/* AI comment after logging */}
-      {aiComment && (
-        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm italic text-foreground/80 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          {aiComment}
-        </div>
-      )}
 
       <Button onClick={handleLog} disabled={!canLog} className="w-full">
         {isLogging ? (

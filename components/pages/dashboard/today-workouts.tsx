@@ -8,8 +8,11 @@ type WorkoutDetails =
       mode: "strength"
       strength: {
         exercise: string
-        sets: number
-        reps: number
+        // new format
+        setRows?: Array<{ reps: number; weightKg?: number }>
+        // old format
+        sets?: number
+        reps?: number
         weightKg?: number
         restSec?: number
       }
@@ -50,10 +53,16 @@ function formatWorkoutDetails(details: unknown): string | null {
 
   if (d.mode === "strength" && d.strength) {
     const s = d.strength
-    const parts = [`${s.sets} x ${s.reps}`]
-    if (typeof s.weightKg === "number") parts.push(`${s.weightKg} kg`)
-    if (typeof s.restSec === "number") parts.push(`rest ${s.restSec}s`)
-    return `Strength: ${parts.join(" · ")}`
+    let summary: string
+    if (s.setRows && s.setRows.length > 0) {
+      summary = s.setRows.map((r) => `${r.weightKg ?? "–"}kg × ${r.reps}`).join(", ")
+    } else {
+      const parts = [`${s.sets} × ${s.reps}`]
+      if (typeof s.weightKg === "number") parts.push(`${s.weightKg} kg`)
+      summary = parts.join(" · ")
+    }
+    if (typeof s.restSec === "number") summary += ` · rest ${s.restSec}s`
+    return `Strength: ${summary}`
   }
 
   if (d.mode === "cardio" && d.cardio) {
@@ -101,11 +110,6 @@ export function TodayWorkouts({ workouts }: TodayWorkoutsProps) {
               )}
               {w.notes && (
                 <p className="text-sm text-muted-foreground whitespace-pre-line pl-1">{w.notes}</p>
-              )}
-              {w.aiComment && (
-                <p className="text-sm italic text-muted-foreground border-l-2 border-orange-300 pl-2">
-                  {w.aiComment}
-                </p>
               )}
             </div>
           )

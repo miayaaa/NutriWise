@@ -78,7 +78,7 @@ type SetRow = { reps: number; weightKg?: number }
 type LastPerf = Record<string, { weightKg?: number; sets: number; reps: number; setRows?: SetRow[]; date: string }>
 
 interface WorkoutTemplatePanelProps {
-  onFillStrength: (data: { name: string; sets: number; reps: number; weightKg?: number; durationMin?: number }) => void
+  onFillStrength: (data: { name: string; sets: number; reps: number; weightKg?: number; setRows?: SetRow[]; durationMin?: number }) => void
   onFillCardio: (data: { cardioType: string; inclinePct?: number; durationMin: number }) => void
 }
 
@@ -163,6 +163,7 @@ export function WorkoutTemplatePanel({ onFillStrength, onFillCardio }: WorkoutTe
         sets: ex.sets,
         reps: repsNum,
         weightKg: perf?.weightKg,
+        setRows: perf?.setRows,
       })
     }
   }
