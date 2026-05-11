@@ -74,10 +74,11 @@ const DAY_COLORS = [
   { bg: "bg-red-50 dark:bg-red-950/40", ring: "ring-red-400", text: "text-red-700 dark:text-red-400", dot: "bg-red-500" },
 ]
 
-type LastPerf = Record<string, { weightKg?: number; sets: number; reps: number; date: string }>
+type SetRow = { reps: number; weightKg?: number }
+type LastPerf = Record<string, { weightKg?: number; sets: number; reps: number; setRows?: SetRow[]; date: string }>
 
 interface WorkoutTemplatePanelProps {
-  onFillStrength: (data: { name: string; sets: number; reps: number; durationMin?: number }) => void
+  onFillStrength: (data: { name: string; sets: number; reps: number; weightKg?: number; durationMin?: number }) => void
   onFillCardio: (data: { cardioType: string; inclinePct?: number; durationMin: number }) => void
 }
 
@@ -156,10 +157,12 @@ export function WorkoutTemplatePanel({ onFillStrength, onFillCardio }: WorkoutTe
       })
     } else {
       const repsNum = parseInt(ex.reps) || 10
+      const perf = lastPerf[ex.name]
       onFillStrength({
         name: ex.name,
         sets: ex.sets,
         reps: repsNum,
+        weightKg: perf?.weightKg,
       })
     }
   }
@@ -253,7 +256,9 @@ export function WorkoutTemplatePanel({ onFillStrength, onFillCardio }: WorkoutTe
                     </div>
                     {perf && (
                       <span className="shrink-0 text-xs text-muted-foreground">
-                        Last{perf.weightKg ? ` ${perf.weightKg}kg` : ` ${perf.sets}×${perf.reps}`}
+                        {perf.setRows
+                          ? `Last ${perf.setRows.map((r) => `${r.weightKg ?? "–"}×${r.reps}`).join(", ")}`
+                          : `Last${perf.weightKg ? ` ${perf.weightKg}kg` : ` ${perf.sets}×${perf.reps}`}`}
                       </span>
                     )}
                     {ex.isCardio && (

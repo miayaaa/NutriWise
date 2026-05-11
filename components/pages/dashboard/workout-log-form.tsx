@@ -12,6 +12,7 @@ import { toast } from "@/components/ui/use-toast"
 import { WorkoutTemplatePanel } from "@/components/pages/dashboard/workout-template-panel"
 
 type WorkoutMode = "strength" | "cardio" | "other"
+type SetRow = { reps: string; weightKg: string }
 
 const WORKOUT_MODES: { value: WorkoutMode; label: string }[] = [
   { value: "strength", label: "Strength" },
@@ -40,9 +41,7 @@ type WorkoutAnalysisContext = {
   mode: WorkoutMode
   strength?: {
     exercise: string
-    sets: number
-    reps: number
-    weightKg?: number
+    setRows: Array<{ reps: number; weightKg?: number }>
     restSec?: number
   }
   cardio?: {
@@ -63,9 +62,7 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
   const [mode, setMode] = React.useState<WorkoutMode>("strength")
 
   const [exerciseName, setExerciseName] = React.useState("")
-  const [sets, setSets] = React.useState("")
-  const [reps, setReps] = React.useState("")
-  const [weightKg, setWeightKg] = React.useState("")
+  const [setRows, setSetRows] = React.useState<SetRow[]>([{ reps: "", weightKg: "" }])
   const [restSec, setRestSec] = React.useState("")
 
   const [cardioType, setCardioType] = React.useState("Treadmill")
@@ -88,9 +85,22 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
 
   const canLogStrength =
     exerciseName.trim().length > 0 &&
-    Number(sets) > 0 &&
-    Number(reps) > 0 &&
+    setRows.length > 0 &&
+    setRows.every((r) => Number(r.reps) > 0) &&
     Number(durationMin) > 0
+
+  function addSet() {
+    const last = setRows[setRows.length - 1]
+    setSetRows((prev) => [...prev, { reps: last?.reps ?? "", weightKg: last?.weightKg ?? "" }])
+  }
+
+  function removeSet(i: number) {
+    setSetRows((prev) => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev))
+  }
+
+  function updateSet(i: number, field: keyof SetRow, value: string) {
+    setSetRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, [field]: value } : row)))
+  }
   const canLogCardio = selectedCardioType.length > 0 && Number(durationMin) > 0
   const canLogOther = otherType.trim().length > 0 && Number(durationMin) > 0
   const canLog =
@@ -106,9 +116,7 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
   function resetForm() {
     setMode("strength")
     setExerciseName("")
-    setSets("")
-    setReps("")
-    setWeightKg("")
+    setSetRows([{ reps: "", weightKg: "" }])
     setRestSec("")
     setCardioType("Treadmill")
     setCustomCardioType("")
@@ -129,9 +137,10 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
         mode,
         strength: {
           exercise: exerciseName.trim(),
-          sets: Number(sets),
-          reps: Number(reps),
-          weightKg: weightKg ? Number(weightKg) : undefined,
+          setRows: setRows.map((r) => ({
+            reps: Number(r.reps),
+            weightKg: r.weightKg ? Number(r.weightKg) : undefined,
+          })),
           restSec: restSec ? Number(restSec) : undefined,
         },
       }
@@ -201,11 +210,15 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
     }
   }
 
-  function handleTemplateFillStrength(data: { name: string; sets: number; reps: number; durationMin?: number }) {
+  function handleTemplateFillStrength(data: { name: string; sets: number; reps: number; weightKg?: number; durationMin?: number }) {
     setMode("strength")
     setExerciseName(data.name)
-    setSets(String(data.sets))
-    setReps(String(data.reps))
+    setSetRows(
+      Array.from({ length: data.sets }, () => ({
+        reps: String(data.reps),
+        weightKg: data.weightKg ? String(data.weightKg) : "",
+      }))
+    )
     if (data.durationMin) setDurationMin(String(data.durationMin))
   }
 
@@ -256,44 +269,52 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
             onChange={(e) => setExerciseName(e.target.value)}
             placeholder="Exercise (e.g. Barbell Squat)"
           />
-          <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Sets</p>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={50}
-                value={sets}
-                onChange={(e) => setSets(e.target.value)}
-                placeholder="3"
-              />
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-[1.5rem_1fr_1fr_1.5rem] gap-2 px-0.5">
+              <span className="text-xs text-muted-foreground text-center">#</span>
+              <span className="text-xs text-muted-foreground">Weight (kg)</span>
+              <span className="text-xs text-muted-foreground">Reps</span>
+              <span />
             </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Reps</p>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={100}
-                value={reps}
-                onChange={(e) => setReps(e.target.value)}
-                placeholder="10"
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Weight (kg)</p>
-              <Input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                max={1000}
-                step="0.5"
-                value={weightKg}
-                onChange={(e) => setWeightKg(e.target.value)}
-                placeholder="60"
-              />
-            </div>
+            {setRows.map((row, i) => (
+              <div key={i} className="grid grid-cols-[1.5rem_1fr_1fr_1.5rem] gap-2 items-center">
+                <span className="text-xs text-center text-muted-foreground">{i + 1}</span>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  max={1000}
+                  step="0.5"
+                  value={row.weightKg}
+                  onChange={(e) => updateSet(i, "weightKg", e.target.value)}
+                  placeholder="kg"
+                />
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={200}
+                  value={row.reps}
+                  onChange={(e) => updateSet(i, "reps", e.target.value)}
+                  placeholder="reps"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeSet(i)}
+                  disabled={setRows.length === 1}
+                  className="text-muted-foreground hover:text-destructive disabled:opacity-25 transition-colors text-sm leading-none"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addSet}
+              className="text-xs text-primary hover:text-primary/70 transition-colors pt-0.5"
+            >
+              + Add Set
+            </button>
           </div>
           <Input
             type="number"

@@ -27,29 +27,49 @@ export async function GET(req: Request) {
       take: 300,
     })
 
+    type SetRow = { reps: number; weightKg?: number }
     type StrengthDetails = {
       mode: string
-      strength?: { exercise: string; sets: number; reps: number; weightKg?: number }
+      strength?: {
+        exercise: string
+        // new format
+        setRows?: SetRow[]
+        // old format
+        sets?: number
+        reps?: number
+        weightKg?: number
+      }
     }
 
-    const result: Record<string, { weightKg?: number; sets: number; reps: number; date: string }> = {}
+    const result: Record<string, { weightKg?: number; sets: number; reps: number; setRows?: SetRow[]; date: string }> = {}
 
     for (const log of recentLogs) {
       const details = log.details as StrengthDetails | null
       if (!details || details.mode !== "strength" || !details.strength) continue
 
       const exerciseName = details.strength.exercise
-      // Match by exact name or case-insensitive
       const matchedName = exerciseNames.find(
         (n) => n === exerciseName || n.toLowerCase() === exerciseName.toLowerCase()
       )
       if (!matchedName || result[matchedName]) continue
 
-      result[matchedName] = {
-        weightKg: details.strength.weightKg,
-        sets: details.strength.sets,
-        reps: details.strength.reps,
-        date: log.date.toISOString(),
+      const s = details.strength
+      if (s.setRows && s.setRows.length > 0) {
+        const weights = s.setRows.map((r) => r.weightKg ?? 0).filter((w) => w > 0)
+        result[matchedName] = {
+          weightKg: weights.length > 0 ? Math.max(...weights) : undefined,
+          sets: s.setRows.length,
+          reps: s.setRows[s.setRows.length - 1]?.reps ?? s.setRows[0]?.reps ?? 0,
+          setRows: s.setRows,
+          date: log.date.toISOString(),
+        }
+      } else {
+        result[matchedName] = {
+          weightKg: s.weightKg,
+          sets: s.sets ?? 0,
+          reps: s.reps ?? 0,
+          date: log.date.toISOString(),
+        }
       }
 
       if (Object.keys(result).length === exerciseNames.length) break

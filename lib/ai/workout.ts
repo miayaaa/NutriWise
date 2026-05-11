@@ -4,9 +4,7 @@ type WorkoutAnalysisContext = {
   mode: "strength" | "cardio" | "other"
   strength?: {
     exercise: string
-    sets: number
-    reps: number
-    weightKg?: number
+    setRows: Array<{ reps: number; weightKg?: number }>
     restSec?: number
   }
   cardio?: {

@@ -10,9 +10,12 @@ const strengthContextSchema = z.object({
   mode: z.literal("strength"),
   strength: z.object({
     exercise: z.string().min(1).max(100),
-    sets: z.number().int().min(1).max(50),
-    reps: z.number().int().min(1).max(200),
-    weightKg: z.number().min(0).max(2000).optional(),
+    setRows: z.array(
+      z.object({
+        reps: z.number().int().min(1).max(200),
+        weightKg: z.number().min(0).max(2000).optional(),
+      })
+    ).min(1).max(50),
     restSec: z.number().int().min(0).max(1200).optional(),
   }),
 })
