@@ -20,12 +20,16 @@ export const authOptions: NextAuthOptions = {
       ? [GoogleProvider({
           clientId: env.GOOGLE_CLIENT_ID,
           clientSecret: env.GOOGLE_CLIENT_SECRET,
+          // Single-user personal app — trust email match across providers
+          // instead of NextAuth's default OAuthAccountNotLinked protection.
+          allowDangerousEmailAccountLinking: true,
         })]
       : []),
     ...(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET
       ? [GithubProvider({
           clientId: env.GITHUB_CLIENT_ID,
           clientSecret: env.GITHUB_CLIENT_SECRET,
+          allowDangerousEmailAccountLinking: true,
         })]
       : []),
     CredentialsProvider({
