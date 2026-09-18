@@ -22,7 +22,6 @@ const CONFIDENCE_CONFIG = {
   low: { label: "Low", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
 }
 
-const pad = (n: number) => String(n).padStart(2, "0")
 function todayLocalMidnightISO() {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
@@ -38,10 +37,14 @@ export function StepUpload({ initialSteps }: StepUploadProps) {
   const [steps, setSteps] = React.useState<number | null>(initialSteps)
   const [status, setStatus] = React.useState<"idle" | "scanning" | "failed">("idle")
   const [pending, setPending] = React.useState<StepsEstimate | null>(null)
-  const [editing, setEditing] = React.useState(false)
-  const [editValue, setEditValue] = React.useState("")
+  const [editValue, setEditValue] = React.useState(initialSteps != null ? String(initialSteps) : "")
   const [isSaving, setIsSaving] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  const savedValueStr = steps != null ? String(steps) : ""
+  const isDirty = editValue.trim() !== "" && editValue !== savedValueStr
+  const parsedValue = Number(editValue)
+  const canSave = isDirty && Number.isFinite(parsedValue) && parsedValue >= 0 && !isSaving
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -62,42 +65,35 @@ export function StepUpload({ initialSteps }: StepUploadProps) {
       const data = (await res.json()) as StepsEstimate
       setPending(data)
       setEditValue(String(data.steps))
-      setEditing(true)
       setStatus("idle")
     } catch {
       setStatus("failed")
     }
   }
 
-  function handleManualEntry() {
-    setPending(null)
-    setEditValue(steps != null ? String(steps) : "")
-    setEditing(true)
-  }
-
   function handleDiscard() {
     setPending(null)
-    setEditing(false)
+    setEditValue(savedValueStr)
   }
 
   async function handleSave() {
-    const parsed = Number(editValue)
-    if (!Number.isFinite(parsed) || parsed < 0) return
+    if (!canSave) return
     setIsSaving(true)
     try {
       const res = await fetch("/api/activities/steps", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: todayLocalMidnightISO(), steps: Math.round(parsed) }),
+        body: JSON.stringify({ date: todayLocalMidnightISO(), steps: Math.round(parsedValue) }),
       })
       if (!res.ok) {
         toast({ title: "Save failed", description: "Could not save your step count. Please try again.", variant: "destructive" })
         return
       }
-      setSteps(Math.round(parsed))
+      const rounded = Math.round(parsedValue)
+      setSteps(rounded)
+      setEditValue(String(rounded))
       setPending(null)
-      setEditing(false)
-      toast({ description: `${Math.round(parsed).toLocaleString("en-US")} steps logged for today.` })
+      toast({ description: `${rounded.toLocaleString("en-US")} steps logged for today.` })
       router.refresh()
     } catch {
       toast({ title: "Network error", description: "Check your connection and try again.", variant: "destructive" })
@@ -117,11 +113,22 @@ export function StepUpload({ initialSteps }: StepUploadProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex items-end justify-between">
-          <div>
-            <p className="text-3xl font-bold leading-none">
-              {steps != null ? steps.toLocaleString("en-US") : "—"}
-            </p>
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-1.5">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={200000}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void handleSave() }}
+                placeholder="0"
+                className="w-24 border-b border-transparent bg-transparent text-3xl font-bold leading-none tabular-nums outline-none transition-colors focus:border-input"
+              />
+              <span className="text-sm text-muted-foreground">steps</span>
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               {steps != null ? "logged today" : "No steps logged today yet"}
             </p>
@@ -134,76 +141,49 @@ export function StepUpload({ initialSteps }: StepUploadProps) {
             className="hidden"
             onChange={handlePhotoChange}
           />
-          <div className="flex shrink-0 items-center gap-1.5">
-            <button
-              type="button"
-              disabled={status === "scanning"}
-              onClick={handleManualEntry}
-              className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80"
-            >
-              ✏️ Type
-            </button>
-            <button
-              type="button"
-              disabled={status === "scanning"}
-              onClick={() => fileInputRef.current?.click()}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                status === "scanning"
-                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 cursor-wait"
-                  : status === "failed"
-                    ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >
-              {status === "scanning"
-                ? <><Icons.spinner className="h-3 w-3 animate-spin" />Scanning…</>
+          <button
+            type="button"
+            disabled={status === "scanning"}
+            onClick={() => fileInputRef.current?.click()}
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+              status === "scanning"
+                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 cursor-wait"
                 : status === "failed"
-                  ? <>Retry 📷</>
-                  : <>📷 Scan</>
-              }
-            </button>
-          </div>
+                  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+            )}
+          >
+            {status === "scanning"
+              ? <><Icons.spinner className="h-3 w-3 animate-spin" />Scanning…</>
+              : status === "failed"
+                ? <>Retry 📷</>
+                : <>📷 Scan</>
+            }
+          </button>
         </div>
 
-        {editing && (
-          <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2.5 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {pending ? "Detected" : "Enter steps"}
-              </p>
-              {conf && (
-                <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", conf.className)}>
-                  {conf.label} confidence
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={0}
-                max={200000}
-                autoFocus={!pending}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground tabular-nums"
-              />
-              <span className="text-xs text-muted-foreground shrink-0">steps</span>
-            </div>
-
-            {pending?.comment && (
-              <p className="text-xs text-muted-foreground italic border-l-2 border-primary/40 pl-2">{pending.comment}</p>
+        {pending && (
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+            <p className="text-xs text-muted-foreground">
+              Detected from screenshot{pending.comment ? ` — ${pending.comment}` : ""}
+            </p>
+            {conf && (
+              <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-medium", conf.className)}>
+                {conf.label}
+              </span>
             )}
+          </div>
+        )}
 
-            <div className="flex justify-end gap-2 pt-1">
-              <Button type="button" variant="ghost" size="sm" disabled={isSaving} onClick={handleDiscard}>
-                Discard
-              </Button>
-              <Button type="button" size="sm" disabled={isSaving} onClick={handleSave}>
-                {isSaving ? <><Icons.spinner className="mr-2 h-3.5 w-3.5 animate-spin" />Saving…</> : "Save"}
-              </Button>
-            </div>
+        {isDirty && (
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" disabled={isSaving} onClick={handleDiscard}>
+              Cancel
+            </Button>
+            <Button type="button" size="sm" disabled={!canSave} onClick={handleSave}>
+              {isSaving ? <><Icons.spinner className="mr-2 h-3.5 w-3.5 animate-spin" />Saving…</> : "Save"}
+            </Button>
           </div>
         )}
 
