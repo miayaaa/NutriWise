@@ -173,6 +173,9 @@ function FiberRow({ value }: { value: number }) {
           style={{ width: `${pct}%` }}
         />
       </div>
+      <p className="text-[11px] text-muted-foreground/70">
+        Soluble fiber (oats, beans, psyllium) helps lower LDL cholesterol.
+      </p>
     </div>
   )
 }
@@ -215,6 +218,13 @@ export function DailyGoalCard({
   } else if (totalProtein > 0) {
     proteinStatus = "warn"
     proteinLabel = `Protein ${Math.round(totalProtein)}g`
+  }
+
+  // ── Fiber status (flagged for LDL/cholesterol management) ──────────
+  let fiberStatus: GoalStatus = "empty"
+  if (totalFiber > 0) {
+    const pct = totalFiber / FIBER_TARGET_G
+    fiberStatus = pct >= 1 ? "ok" : pct >= 0.6 ? "warn" : "danger"
   }
 
   // ── Workout status ────────────────────────────────────────────────
@@ -287,6 +297,21 @@ export function DailyGoalCard({
             </span>
           )}
 
+          {/* Fiber pill — always shown, flagged for LDL management */}
+          <span className={cn(
+            "flex items-center gap-1 rounded-full px-2.5 py-1 font-medium",
+            fiberStatus === "ok"     && "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400",
+            fiberStatus === "warn"   && "bg-amber-50 dark:bg-amber-950/40 text-amber-600",
+            fiberStatus === "danger" && "bg-red-50 dark:bg-red-950/40 text-red-600",
+            fiberStatus === "empty"  && "bg-muted text-muted-foreground",
+          )}>
+            <span>{statusIcon(fiberStatus)}</span>
+            <span>
+              🌾 {totalFiber > 0 ? `${Math.round(totalFiber * 10) / 10}g` : "0g"}
+              <span className="opacity-60"> / {FIBER_TARGET_G}g</span>
+            </span>
+          </span>
+
           {/* Workout pill */}
           <span className={cn(
             "flex items-center gap-1 rounded-full px-2.5 py-1 font-medium",
@@ -336,8 +361,8 @@ export function DailyGoalCard({
           />
         )}
 
-        {/* ── Fiber ── */}
-        {totalFiber > 0 && <FiberRow value={totalFiber} />}
+        {/* ── Fiber (always shown — flagged for LDL management) ── */}
+        <FiberRow value={totalFiber} />
 
         {/* ── Meal list ── */}
         {meals.length === 0 ? (
