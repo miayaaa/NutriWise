@@ -38,6 +38,7 @@ export function StepUpload({ initialSteps }: StepUploadProps) {
   const [steps, setSteps] = React.useState<number | null>(initialSteps)
   const [status, setStatus] = React.useState<"idle" | "scanning" | "failed">("idle")
   const [pending, setPending] = React.useState<StepsEstimate | null>(null)
+  const [editing, setEditing] = React.useState(false)
   const [editValue, setEditValue] = React.useState("")
   const [isSaving, setIsSaving] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -61,10 +62,22 @@ export function StepUpload({ initialSteps }: StepUploadProps) {
       const data = (await res.json()) as StepsEstimate
       setPending(data)
       setEditValue(String(data.steps))
+      setEditing(true)
       setStatus("idle")
     } catch {
       setStatus("failed")
     }
+  }
+
+  function handleManualEntry() {
+    setPending(null)
+    setEditValue(steps != null ? String(steps) : "")
+    setEditing(true)
+  }
+
+  function handleDiscard() {
+    setPending(null)
+    setEditing(false)
   }
 
   async function handleSave() {
@@ -83,6 +96,7 @@ export function StepUpload({ initialSteps }: StepUploadProps) {
       }
       setSteps(Math.round(parsed))
       setPending(null)
+      setEditing(false)
       toast({ description: `${Math.round(parsed).toLocaleString("en-US")} steps logged for today.` })
       router.refresh()
     } catch {
@@ -120,32 +134,44 @@ export function StepUpload({ initialSteps }: StepUploadProps) {
             className="hidden"
             onChange={handlePhotoChange}
           />
-          <button
-            type="button"
-            disabled={status === "scanning"}
-            onClick={() => fileInputRef.current?.click()}
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-              status === "scanning"
-                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 cursor-wait"
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              disabled={status === "scanning"}
+              onClick={handleManualEntry}
+              className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80"
+            >
+              ✏️ Type
+            </button>
+            <button
+              type="button"
+              disabled={status === "scanning"}
+              onClick={() => fileInputRef.current?.click()}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                status === "scanning"
+                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 cursor-wait"
+                  : status === "failed"
+                    ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              {status === "scanning"
+                ? <><Icons.spinner className="h-3 w-3 animate-spin" />Scanning…</>
                 : status === "failed"
-                  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-            )}
-          >
-            {status === "scanning"
-              ? <><Icons.spinner className="h-3 w-3 animate-spin" />Scanning…</>
-              : status === "failed"
-                ? <>Retry 📷</>
-                : <>📷 Scan screenshot</>
-            }
-          </button>
+                  ? <>Retry 📷</>
+                  : <>📷 Scan</>
+              }
+            </button>
+          </div>
         </div>
 
-        {pending && (
+        {editing && (
           <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2.5 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Detected</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                {pending ? "Detected" : "Enter steps"}
+              </p>
               {conf && (
                 <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", conf.className)}>
                   {conf.label} confidence
@@ -158,6 +184,7 @@ export function StepUpload({ initialSteps }: StepUploadProps) {
                 type="number"
                 min={0}
                 max={200000}
+                autoFocus={!pending}
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground tabular-nums"
@@ -165,12 +192,12 @@ export function StepUpload({ initialSteps }: StepUploadProps) {
               <span className="text-xs text-muted-foreground shrink-0">steps</span>
             </div>
 
-            {pending.comment && (
+            {pending?.comment && (
               <p className="text-xs text-muted-foreground italic border-l-2 border-primary/40 pl-2">{pending.comment}</p>
             )}
 
             <div className="flex justify-end gap-2 pt-1">
-              <Button type="button" variant="ghost" size="sm" disabled={isSaving} onClick={() => setPending(null)}>
+              <Button type="button" variant="ghost" size="sm" disabled={isSaving} onClick={handleDiscard}>
                 Discard
               </Button>
               <Button type="button" size="sm" disabled={isSaving} onClick={handleSave}>
