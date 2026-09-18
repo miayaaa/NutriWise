@@ -33,7 +33,7 @@ export function WorkoutLogLauncher({ buttonText = "Add Workout" }: WorkoutLogLau
           </CredenzaDescription>
         </CredenzaHeader>
         <div className="px-4 pb-6 overflow-y-auto flex-1">
-          <WorkoutLogForm onSuccess={() => setOpen(false)} />
+          <WorkoutLogForm onSaved={() => setOpen(false)} />
         </div>
       </CredenzaContent>
     </Credenza>

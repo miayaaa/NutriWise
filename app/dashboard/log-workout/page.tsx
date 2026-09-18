@@ -20,7 +20,7 @@ export default function LogWorkoutPage() {
         </button>
         <h1 className="text-lg font-semibold">Log Workout</h1>
       </div>
-      <WorkoutLogForm onSuccess={() => router.push("/dashboard")} />
+      <WorkoutLogForm onSaved={() => router.push("/dashboard")} />
     </div>
   )
 }

@@ -34,10 +34,13 @@ type WorkoutAnalysisContext = {
   }
 }
 
-type SessionItem = {
+// An exercise that has already been saved to the backend during this visit,
+// kept locally only so the user gets a running "logged so far" list.
+type LoggedItem = {
   id: string
   label: string
-  analysisContext: WorkoutAnalysisContext
+  summary: string
+  durationMin: number
 }
 
 const WORKOUT_MODES: { value: WorkoutMode; label: string }[] = [
@@ -89,11 +92,10 @@ const STRENGTH_EXERCISE_GROUPS: { group: string; exercises: { value: string; lab
 ]
 
 interface WorkoutLogFormProps {
-  onSuccess?: () => void
+  onSaved?: () => void
 }
 
-function summarizeItem(item: SessionItem): string {
-  const ctx = item.analysisContext
+function summarizeContext(ctx: WorkoutAnalysisContext): string {
   if (ctx.mode === "strength" && ctx.strength) {
     const rows = ctx.strength.setRows
     const setCount = `${rows.length} set${rows.length > 1 ? "s" : ""}`
@@ -111,11 +113,11 @@ function summarizeItem(item: SessionItem): string {
   return ""
 }
 
-export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
+export function WorkoutLogForm({ onSaved }: WorkoutLogFormProps) {
   const router = useRouter()
 
-  // Session state
-  const [session, setSession] = React.useState<SessionItem[]>([])
+  // Exercises already saved to the backend during this visit (display only).
+  const [loggedItems, setLoggedItems] = React.useState<LoggedItem[]>([])
 
   // Exercise form state
   const [mode, setMode] = React.useState<WorkoutMode>("strength")
@@ -135,14 +137,12 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
 
   const [otherType, setOtherType] = React.useState("")
 
-  // Session-level state
   const [durationMin, setDurationMin] = React.useState("")
   const [notes, setNotes] = React.useState("")
   const [isLogging, setIsLogging] = React.useState(false)
 
   const selectedCardioType = cardioType === "Other" ? customCardioType.trim() : cardioType
 
-  // Per-exercise readiness (no duration required — that's session-level)
   const exerciseReady =
     mode === "strength"
       ? exerciseName.trim().length > 0 && setRows.length > 0 && setRows.every((r) => Number(r.reps) > 0)
@@ -150,8 +150,7 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
         ? selectedCardioType.length > 0
         : otherType.trim().length > 0
 
-  const canAdd = exerciseReady && !isLogging
-  const canSave = session.length > 0 && Number(durationMin) > 0 && !isLogging
+  const canSave = exerciseReady && Number(durationMin) > 0 && !isLogging
 
   // Set row helpers
   function addSet() {
@@ -233,69 +232,58 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
     setInclinePct("")
     setElevationGainM("")
     setOtherType("")
-  }
-
-  function resetAll() {
-    setSession([])
-    clearExerciseFields()
     setDurationMin("")
     setNotes("")
-    setMode("strength")
   }
 
-  function handleAddToSession() {
-    if (!canAdd) return
-    const item: SessionItem = {
-      id: Math.random().toString(36).slice(2),
-      label: getExerciseLabel(),
-      analysisContext: buildAnalysisContext(),
-    }
-    setSession((prev) => [...prev, item])
-    clearExerciseFields()
-  }
-
-  function removeFromSession(id: string) {
-    setSession((prev) => prev.filter((item) => item.id !== id))
-  }
-
-  async function handleSaveSession() {
+  async function handleSaveExercise() {
     if (!canSave) return
     setIsLogging(true)
-    const duration = Number(durationMin)
+    const duration = Math.round(Number(durationMin))
     const trimmedNotes = notes.trim()
+    const label = getExerciseLabel()
+    const analysisContext = buildAnalysisContext()
 
     try {
-      const durationInt = Math.round(duration)
-      const results = await Promise.all(
-        session.map((item) =>
-          fetch("/api/workout-logs", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: item.label,
-              durationMin: durationInt,
-              notes: trimmedNotes || undefined,
-              analysisContext: item.analysisContext,
-            }),
-          })
-        )
-      )
+      const res = await fetch("/api/workout-logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: label,
+          durationMin: duration,
+          notes: trimmedNotes || undefined,
+          analysisContext,
+        }),
+      })
 
-      const failed = results.filter((r) => !r.ok)
-      if (failed.length > 0) {
-        const bodies = await Promise.all(failed.map((r) => r.text().catch(() => "")))
-        console.error("Workout save errors:", bodies)
-        toast({ title: "Error", description: "Some exercises could not be saved.", variant: "destructive" })
+      if (!res.ok) {
+        const body = await res.text().catch(() => "")
+        console.error("Workout save error:", body)
+        toast({ title: "Error", description: "This exercise could not be saved.", variant: "destructive" })
         return
       }
 
-      const n = session.length
-      toast({ description: `${n} exercise${n > 1 ? "s" : ""} logged · ${duration} min session.` })
-      resetAll()
+      const saved = await res.json() as { id: string }
+      setLoggedItems((prev) => [...prev, { id: saved.id, label, summary: summarizeContext(analysisContext), durationMin: duration }])
+      toast({ description: `${label} logged · ${duration} min.` })
+      clearExerciseFields()
       router.refresh()
-      onSuccess?.()
+      onSaved?.()
     } finally {
       setIsLogging(false)
+    }
+  }
+
+  async function removeLoggedItem(id: string) {
+    const prev = loggedItems
+    setLoggedItems((items) => items.filter((item) => item.id !== id))
+    try {
+      const res = await fetch(`/api/workout-logs/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error()
+      router.refresh()
+    } catch {
+      setLoggedItems(prev)
+      toast({ title: "Error", description: "Could not remove that entry.", variant: "destructive" })
     }
   }
 
@@ -326,23 +314,24 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
 
   return (
     <div className="space-y-4 pb-2">
-      {/* Session list */}
-      {session.length > 0 && (
+      {/* Logged so far (this visit) */}
+      {loggedItems.length > 0 && (
         <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
           <p className="text-xs font-medium text-muted-foreground">
-            Session · {session.length} exercise{session.length > 1 ? "s" : ""}
+            Logged · {loggedItems.length} exercise{loggedItems.length > 1 ? "s" : ""}
           </p>
-          {session.map((item) => (
+          {loggedItems.map((item) => (
             <div key={item.id} className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
+              <div className="min-w-0 flex items-center gap-1.5">
+                <Icons.check className="h-3.5 w-3.5 shrink-0 text-primary" />
                 <span className="text-sm font-medium">{item.label}</span>
-                {summarizeItem(item) && (
-                  <span className="ml-2 text-xs text-muted-foreground">{summarizeItem(item)}</span>
-                )}
+                <span className="text-xs text-muted-foreground">
+                  {[item.summary, `${item.durationMin} min`].filter(Boolean).join(" · ")}
+                </span>
               </div>
               <button
                 type="button"
-                onClick={() => removeFromSession(item.id)}
+                onClick={() => removeLoggedItem(item.id)}
                 className="shrink-0 text-xs text-muted-foreground hover:text-destructive transition-colors"
               >
                 ✕
@@ -361,7 +350,7 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
       {/* Mode selector */}
       <div className="space-y-2">
         <p className="text-sm font-medium">
-          {session.length > 0 ? "Add another exercise" : "Workout category"}
+          {loggedItems.length > 0 ? "Add another exercise" : "Workout category"}
         </p>
         <div className="flex flex-wrap gap-2">
           {WORKOUT_MODES.map((m) => (
@@ -520,52 +509,34 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
         </div>
       )}
 
-      {/* Add to session button */}
-      <Button
-        type="button"
-        variant={session.length > 0 ? "outline" : "default"}
-        onClick={handleAddToSession}
-        disabled={!canAdd}
-        className="w-full"
-      >
-        <Icons.add className="mr-2 h-4 w-4" />
-        {session.length > 0 ? "Add Another Exercise" : "Add to Session"}
+      {/* Duration + notes for this exercise */}
+      <div className="space-y-1">
+        <p className="text-sm font-medium">Duration (minutes)</p>
+        <Input
+          type="number" inputMode="numeric" min={1} max={600}
+          value={durationMin}
+          onChange={(e) => setDurationMin(e.target.value)}
+          placeholder="e.g. 15"
+          className="w-full sm:w-32"
+        />
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-muted-foreground">Notes (optional)</p>
+        <Textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="RPE, how you felt, pain signals, etc."
+          rows={2}
+        />
+      </div>
+
+      {/* Save this exercise immediately */}
+      <Button onClick={handleSaveExercise} disabled={!canSave} className="w-full">
+        {isLogging
+          ? <><Icons.spinner className="mr-2 h-4 w-4 animate-spin" />Saving…</>
+          : <><Icons.check className="mr-2 h-4 w-4" />Save</>
+        }
       </Button>
-
-      {/* Session-level: duration + notes + save */}
-      {session.length > 0 && (
-        <>
-          <div className="space-y-1">
-            <p className="text-sm font-medium">Total session duration (minutes)</p>
-            <Input
-              type="number" inputMode="numeric" min={1} max={600}
-              value={durationMin}
-              onChange={(e) => setDurationMin(e.target.value)}
-              placeholder="e.g. 60"
-              className="w-full sm:w-32"
-            />
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground">Notes (optional)</p>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="RPE, how you felt, pain signals, etc."
-              rows={2}
-            />
-          </div>
-          <Button onClick={handleSaveSession} disabled={!canSave} className="w-full">
-            {isLogging
-              ? <><Icons.spinner className="mr-2 h-4 w-4 animate-spin" />Saving…</>
-              : <>
-                  <Icons.check className="mr-2 h-4 w-4" />
-                  Save Session ({session.length} exercise{session.length > 1 ? "s" : ""})
-                </>
-            }
-          </Button>
-        </>
-      )}
-
     </div>
   )
 }
