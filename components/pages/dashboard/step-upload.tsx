@@ -52,7 +52,12 @@ export function StepUpload({ initialSteps }: StepUploadProps) {
       const form = new FormData()
       form.append("image", file)
       const res = await fetch("/api/ai/vision-steps", { method: "POST", body: form })
-      if (!res.ok) { setStatus("failed"); return }
+      if (!res.ok) {
+        setStatus("failed")
+        const message = await res.text().catch(() => "")
+        toast({ title: "Scan failed", description: message || "Could not process that image.", variant: "destructive" })
+        return
+      }
       const data = (await res.json()) as StepsEstimate
       setPending(data)
       setEditValue(String(data.steps))
@@ -112,7 +117,6 @@ export function StepUpload({ initialSteps }: StepUploadProps) {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             className="hidden"
             onChange={handlePhotoChange}
           />

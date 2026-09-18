@@ -17,6 +17,7 @@ export async function getFoodHistory(userId: string, days = 30) {
       protein: true,
       carbs: true,
       fat: true,
+      fiber: true,
     },
     orderBy: { date: "desc" },
   })
@@ -36,5 +37,6 @@ export async function getFoodHistory(userId: string, days = 30) {
     totalProtein:  meals.reduce((s, m) => s + (m.protein  ?? 0), 0),
     totalCarbs:    meals.reduce((s, m) => s + (m.carbs    ?? 0), 0),
     totalFat:      meals.reduce((s, m) => s + (m.fat      ?? 0), 0),
+    totalFiber:    meals.reduce((s, m) => s + (m.fiber    ?? 0), 0),
   }))
 }

@@ -25,13 +25,16 @@ const MEAL_META: Record<string, { label: string; emoji: string }> = {
   SNACK:     { label: "Snack",     emoji: "🍎" },
 }
 
-function MacroChips({ protein, carbs, fat }: { protein: number; carbs: number; fat: number }) {
+function MacroChips({ protein, carbs, fat, fiber }: { protein: number; carbs: number; fat: number; fiber?: number }) {
   if (protein + carbs + fat === 0) return null
   return (
-    <div className="flex gap-3 text-xs text-muted-foreground">
+    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
       <span><span className="font-medium text-blue-500">{Math.round(protein)}g</span> protein</span>
       <span><span className="font-medium text-amber-500">{Math.round(carbs)}g</span> carbs</span>
       <span><span className="font-medium text-rose-400">{Math.round(fat)}g</span> fat</span>
+      {fiber != null && fiber > 0 && (
+        <span>🌾 <span className="font-medium text-emerald-600 dark:text-emerald-400">{Math.round(fiber * 10) / 10}g</span> fiber</span>
+      )}
     </div>
   )
 }
@@ -230,7 +233,7 @@ export function FoodHistoryView({ history }: { history: HistoryData }) {
   return (
     <>
       <div className="space-y-4">
-        {history.map(({ date, meals, totalCalories, totalProtein, totalCarbs, totalFat }) => {
+        {history.map(({ date, meals, totalCalories, totalProtein, totalCarbs, totalFat, totalFiber }) => {
           const dateLabel = getDateLabel(date)
 
           const grouped = meals.reduce<Record<string, typeof meals>>((acc, m) => {
@@ -245,7 +248,7 @@ export function FoodHistoryView({ history }: { history: HistoryData }) {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="font-semibold">{dateLabel}</p>
-                  <MacroChips protein={totalProtein} carbs={totalCarbs} fat={totalFat} />
+                  <MacroChips protein={totalProtein} carbs={totalCarbs} fat={totalFat} fiber={totalFiber} />
                 </div>
                 <div className="ml-4 shrink-0 text-right">
                   <p className="text-2xl font-bold tabular-nums leading-none">

@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth"
 import { CalorieEstimate } from "@/lib/ai/calories"
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5 MB
+const SUPPORTED_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const
+type SupportedMediaType = (typeof SUPPORTED_MEDIA_TYPES)[number]
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -17,10 +19,17 @@ export async function POST(req: Request) {
     const file = formData.get("image") as File | null
     if (!file) return new Response("No image provided", { status: 422 })
     if (file.size > MAX_IMAGE_BYTES) return new Response("Image too large (max 5 MB)", { status: 422 })
+    if (!SUPPORTED_MEDIA_TYPES.includes(file.type as SupportedMediaType)) {
+      // iPhone camera capture often produces HEIC, which Claude's image API doesn't accept.
+      return new Response(
+        `Unsupported image format${file.type ? ` (${file.type})` : ""}. Please use JPEG, PNG, WEBP, or GIF — on iPhone, switch Camera format to "Most Compatible" in Settings.`,
+        { status: 422 }
+      )
+    }
 
     const buffer = await file.arrayBuffer()
     const base64 = Buffer.from(buffer).toString("base64")
-    const mediaType = (file.type || "image/jpeg") as "image/jpeg" | "image/png" | "image/webp" | "image/gif"
+    const mediaType = file.type as SupportedMediaType
 
     const client = new Anthropic({ apiKey })
 
@@ -62,7 +71,8 @@ Rules:
     const parsed = JSON.parse(raw) as CalorieEstimate & { description: string }
 
     return Response.json(parsed)
-  } catch {
+  } catch (error) {
+    console.error("vision-food failed:", error)
     return new Response("Failed to process image", { status: 500 })
   }
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { BsDropletFill } from "react-icons/bs"
 
 import { toast } from "@/components/ui/use-toast"
@@ -8,6 +9,7 @@ import { toast } from "@/components/ui/use-toast"
 const WATER_AMOUNTS = [200, 300, 500, 750]
 
 export function WaterQuickLog({ onSuccess }: { onSuccess?: () => void }) {
+  const router = useRouter()
   const [isAdding, setIsAdding] = React.useState(false)
   const [custom, setCustom] = React.useState("")
 
@@ -22,6 +24,7 @@ export function WaterQuickLog({ onSuccess }: { onSuccess?: () => void }) {
       })
       if (res.ok) {
         toast({ description: `+${amount}ml logged.` })
+        router.refresh()
         onSuccess?.()
       }
     } catch {

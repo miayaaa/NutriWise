@@ -41,6 +41,14 @@ export function WeightTracker({ userId, initialLogs, weightGoalKg, lastPeriodDat
   const [logs, setLogs] = React.useState<WeightLog[]>(
     initialLogs.map((x) => ({ ...x, date: new Date(x.date) }))
   )
+
+  // initialLogs only changes when the server sends a fresh payload (navigation or
+  // router.refresh()) — resync so writes from elsewhere aren't shadowed by this
+  // card's own optimistic-add local state (see the Water card bug this mirrors).
+  React.useEffect(() => {
+    setLogs(initialLogs.map((x) => ({ ...x, date: new Date(x.date) })))
+  }, [initialLogs])
+
   const [range, setRange] = React.useState<RangeType>(7)
   const [weightInput, setWeightInput] = React.useState("")
   const [isSaving, setIsSaving] = React.useState(false)

@@ -138,7 +138,11 @@ export default async function Dashboard() {
   return (
     <Shell className="w-full px-4 md:px-0">
       {/* Quick log — food / water / workout dialogs */}
-      <QuickLogCard />
+      <QuickLogCard
+        fastingEnabled={dbUser?.fastingEnabled}
+        fastingStart={dbUser?.fastingStart}
+        fastingEnd={dbUser?.fastingEnd}
+      />
 
       <SedentaryAlert initialStatus={sedentaryStatus} />
 

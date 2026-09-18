@@ -51,6 +51,43 @@ const CARDIO_PRESETS = [
   "Stair Climber", "Cycling", "Elliptical", "Swimming", "Hiking", "Other",
 ]
 
+const STRENGTH_EXERCISE_GROUPS: { group: string; exercises: { value: string; label: string }[] }[] = [
+  {
+    group: "Back",
+    exercises: [
+      { value: "Lat Pulldown", label: "Lat Pulldown (下拉)" },
+      { value: "Seated Cable Row", label: "Seated Cable Row (后拉/划船)" },
+      { value: "Assisted Pull-up", label: "Assisted Pull-up (辅助引体向上)" },
+    ],
+  },
+  {
+    group: "Glutes & Legs",
+    exercises: [
+      { value: "Hip Thrust", label: "Hip Thrust (臀推)" },
+      { value: "Bulgarian Split Squat", label: "Bulgarian Split Squat (保加利亚蹲)" },
+      { value: "Lunge", label: "Lunge (箭步蹲)" },
+      { value: "Deadlift", label: "Deadlift (硬拉)" },
+      { value: "Hip Abduction", label: "Hip Abduction (髋外展)" },
+      { value: "Frog Pump", label: "Frog Pump (青蛙趴)" },
+    ],
+  },
+  {
+    group: "Shoulders",
+    exercises: [
+      { value: "Shoulder Press", label: "Shoulder Press (肩上推)" },
+      { value: "Lateral Raise", label: "Lateral Raise (侧平举)" },
+      { value: "Reverse Fly", label: "Reverse Fly (反向飞鸟)" },
+    ],
+  },
+  {
+    group: "Arms",
+    exercises: [
+      { value: "Bicep Curl", label: "Bicep Curl (二头弯举)" },
+      { value: "Tricep Pushdown", label: "Tricep Pushdown (三头下压)" },
+    ],
+  },
+]
+
 interface WorkoutLogFormProps {
   onSuccess?: () => void
 }
@@ -350,6 +387,26 @@ export function WorkoutLogForm({ onSuccess }: WorkoutLogFormProps) {
         <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
           <p className="text-sm font-medium">Strength details</p>
           <div className="space-y-1">
+            <select
+              value=""
+              onChange={(e) => {
+                const val = e.target.value
+                if (!val) return
+                setExerciseName(val)
+                setPrefilled(false)
+                void lookupLastPerf(val)
+              }}
+              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm text-muted-foreground"
+            >
+              <option value="">Quick pick…</option>
+              {STRENGTH_EXERCISE_GROUPS.map((g) => (
+                <optgroup key={g.group} label={g.group}>
+                  {g.exercises.map((ex) => (
+                    <option key={ex.value} value={ex.value}>{ex.label}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
             <Input
               value={exerciseName}
               onChange={(e) => { setExerciseName(e.target.value); setPrefilled(false) }}

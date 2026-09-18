@@ -27,6 +27,14 @@ export function WaterProgress({ initialLogs, dailyGoal }: WaterProgressProps) {
   const [customAmount, setCustomAmount] = React.useState("")
   const [showCustom, setShowCustom] = React.useState(false)
 
+  // initialLogs only changes when the server actually sends a fresh payload
+  // (navigation or router.refresh()) — resync so updates from other components
+  // (e.g. the Log Water dialog) are reflected here too, not just this card's
+  // own optimistic add/delete.
+  React.useEffect(() => {
+    setLogs(initialLogs)
+  }, [initialLogs])
+
   const total = logs.reduce((s, l) => s + l.amount, 0)
   const pct = dailyGoal > 0 ? Math.min((total / dailyGoal) * 100, 100) : 0
   const barColor = pct >= 100 ? "bg-blue-500" : pct >= 60 ? "bg-blue-400" : "bg-blue-300"

@@ -52,7 +52,13 @@ const LOG_ACTIONS = [
 
 type LogKey = (typeof LOG_ACTIONS)[number]["key"]
 
-export function QuickLogCard() {
+interface QuickLogCardProps {
+  fastingEnabled?: boolean
+  fastingStart?: number
+  fastingEnd?: number
+}
+
+export function QuickLogCard({ fastingEnabled, fastingStart, fastingEnd }: QuickLogCardProps) {
   const router = useRouter()
   const [open, setOpen] = React.useState<LogKey | null>(null)
   const foodLogRef = React.useRef<QuickFoodLogHandle>(null)
@@ -125,6 +131,9 @@ export function QuickLogCard() {
               hideButton
               onCanLogChange={setFoodCanLog}
               onLoggingChange={setFoodLogging}
+              fastingEnabled={fastingEnabled}
+              fastingStart={fastingStart}
+              fastingEnd={fastingEnd}
             />
           </div>
 

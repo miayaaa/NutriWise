@@ -32,6 +32,13 @@ export function WaistTracker({ initialLogs, waistGoalCm }: WaistTrackerProps) {
   const [logs, setLogs] = React.useState<BodyMeasurement[]>(
     initialLogs.map((x) => ({ ...x, date: new Date(x.date) }))
   )
+
+  // See water-progress.tsx / weight-tracker.tsx — resync when the server sends a
+  // fresh payload so writes from elsewhere aren't shadowed by local state.
+  React.useEffect(() => {
+    setLogs(initialLogs.map((x) => ({ ...x, date: new Date(x.date) })))
+  }, [initialLogs])
+
   const [isOpen, setIsOpen] = React.useState(false)
   const [waistInput, setWaistInput] = React.useState("")
   const [feelScore, setFeelScore] = React.useState<number | null>(null)

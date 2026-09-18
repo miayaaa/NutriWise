@@ -153,6 +153,15 @@ interface QuickFoodLogProps {
   hideButton?: boolean
   onCanLogChange?: (canLog: boolean) => void
   onLoggingChange?: (isLogging: boolean) => void
+  fastingEnabled?: boolean
+  fastingStart?: number
+  fastingEnd?: number
+}
+
+function formatHour(h: number) {
+  const ampm = h < 12 ? "AM" : "PM"
+  const display = h === 0 ? 12 : h > 12 ? h - 12 : h
+  return `${display}:00 ${ampm}`
 }
 
 type RecentMeal = {
@@ -167,7 +176,7 @@ type RecentMeal = {
 }
 
 export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogProps>(
-  function QuickFoodLog({ onSuccess, hideButton = false, onCanLogChange, onLoggingChange }, ref) {
+  function QuickFoodLog({ onSuccess, hideButton = false, onCanLogChange, onLoggingChange, fastingEnabled, fastingStart, fastingEnd }, ref) {
     const router = useRouter()
     const [mealType, setMealType] = React.useState<MealType>("SNACK")
     const [description, setDescription] = React.useState("")
@@ -341,7 +350,12 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
         const form = new FormData()
         form.append("image", file)
         const res = await fetch("/api/ai/vision-food", { method: "POST", body: form })
-        if (!res.ok) { setPhotoStatus("failed"); return }
+        if (!res.ok) {
+          setPhotoStatus("failed")
+          const message = await res.text().catch(() => "")
+          toast({ title: "Photo scan failed", description: message || "Could not process that image.", variant: "destructive" })
+          return
+        }
         const data = await res.json() as CalorieEstimate & { description: string }
         if (data.description) setDescription(data.description)
         setEstimate({
@@ -434,8 +448,30 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
 
     React.useImperativeHandle(ref, () => ({ triggerLog: handleLog }))
 
+    // Proactive fasting-window warning — checked against the currently selected
+    // log time (defaults to now), so it reflects what will actually be submitted
+    // rather than only surfacing after the user hits Log and gets a 409.
+    const currentLogHour = logTime ? Number(logTime.split(":")[0]) : new Date().getHours()
+    const isOutsideFastingWindow = Boolean(
+      fastingEnabled &&
+      fastingStart != null &&
+      fastingEnd != null &&
+      (fastingEnd > fastingStart
+        ? !(currentLogHour >= fastingStart && currentLogHour < fastingEnd)
+        : !(currentLogHour >= fastingStart || currentLogHour < fastingEnd))
+    )
+
     return (
       <div className="space-y-4">
+        {isOutsideFastingWindow && fastingStart != null && fastingEnd != null && (
+          <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+            <span>⚠️</span>
+            <span>
+              Outside your eating window ({formatHour(fastingStart)}–{formatHour(fastingEnd)}). You can still log — we&apos;ll just double-check before saving.
+            </span>
+          </div>
+        )}
+
         {/* Meal type */}
         <div className="flex flex-wrap gap-2">
           {MEAL_OPTIONS.map((opt) => (
