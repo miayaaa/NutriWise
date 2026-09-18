@@ -16,6 +16,7 @@ export async function GET() {
       protein: true,
       carbs: true,
       fat: true,
+      fiber: true,
       aiComment: true,
     },
     orderBy: { date: "desc" },

@@ -5,6 +5,8 @@ import Anthropic from "@anthropic-ai/sdk"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { getCycleInfo } from "@/lib/cycle"
+import { getSedentaryStatus } from "@/lib/api/activity-status"
+import { getExerciseSuggestion } from "@/lib/ai/exercise-suggestion"
 
 const bodySchema = z.object({
   messages: z.array(
@@ -30,7 +32,7 @@ async function buildSystemPrompt(userId: string): Promise<string> {
   const sevenDaysAgo = new Date(today)
   sevenDaysAgo.setDate(today.getDate() - 6)
 
-  const [user, todayMeals, recentFoodLogs, recentWorkouts, recentWeights, todayWater] = await Promise.all([
+  const [user, todayMeals, recentFoodLogs, recentWorkouts, recentWeights, todayWater, sedentaryStatus] = await Promise.all([
     db.user.findUnique({
       where: { id: userId },
       select: {
@@ -75,6 +77,7 @@ async function buildSystemPrompt(userId: string): Promise<string> {
       where: { userId, date: { gte: today, lte: todayEnd } },
       _sum: { amount: true },
     }),
+    getSedentaryStatus(userId),
   ])
 
   const goalLabel = user?.fitnessGoal ? GOAL_LABELS[user.fitnessGoal] ?? user.fitnessGoal : null
@@ -208,6 +211,19 @@ async function buildSystemPrompt(userId: string): Promise<string> {
     priorityAlerts.push(
       `⚠️ PRIORITY ALERT — RECOVERY NEEDED: ${consecutiveTrainingDays} consecutive training days. Recommend active recovery or rest before adding more intensity.`
     )
+  }
+
+  // Diet/activity-linked exercise suggestion (sedentary nudge or calorie-surplus cardio
+  // suggestion). Skip "rest" kind here since needsRestDay above already covers it.
+  const exerciseSuggestion = getExerciseSuggestion({
+    todayCalories: todayKcal,
+    dailyCalorieGoal: user?.dailyCalorieGoal ?? null,
+    hasLoggedWorkoutToday: sedentaryStatus.hasLoggedWorkoutToday,
+    consecutiveTrainingDays,
+    sedentaryHours: sedentaryStatus.sedentaryHours,
+  })
+  if (exerciseSuggestion && exerciseSuggestion.kind !== "rest") {
+    priorityAlerts.push(`💡 ACTIVITY SUGGESTION: ${exerciseSuggestion.message}`)
   }
 
   return `You are a professional personal trainer and sports nutritionist acting as ${user?.name ? `${user.name}'s` : "the user's"} dedicated AI fitness coach.

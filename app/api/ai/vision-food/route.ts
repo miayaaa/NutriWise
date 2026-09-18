@@ -41,12 +41,13 @@ export async function POST(req: Request) {
               text: `Identify the food in this image and estimate its nutrition.
 
 Respond ONLY with valid JSON (no markdown):
-{"description":"<natural description of what you see, e.g. '2 scrambled eggs with toast and butter'>","calories":<int>,"protein":<int>,"carbs":<int>,"fat":<int>,"breakdown":[{"item":"<name>","calories":<int>}],"confidence":"<high|medium|low>","comment":"<1 concise coaching sentence, max 20 words>"}
+{"description":"<natural description of what you see, e.g. '2 scrambled eggs with toast and butter'>","calories":<int>,"protein":<int>,"carbs":<int>,"fat":<int>,"fiber":<number, grams, 1 decimal>,"breakdown":[{"item":"<name>","calories":<int>}],"confidence":"<high|medium|low>","comment":"<1 concise coaching sentence, max 20 words>"}
 
 Rules:
 - description: write as if the user described the meal themselves, natural language
 - If you cannot identify food, set confidence to "low" and describe what you see
 - Keep calories/macros realistic
+- fiber: estimate total dietary fiber in grams (oats, chia seeds, wood ear mushroom, beans, vegetables push this up; meat/eggs/refined grains near 0)
 - No extra keys`,
             },
           ],

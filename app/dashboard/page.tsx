@@ -3,6 +3,8 @@ import { redirect } from "next/navigation"
 
 import { getTodayFoodLogs } from "@/lib/api/dashboard"
 import { getWeeklyStats } from "@/lib/api/weekly-stats"
+import { getTodayStepCount } from "@/lib/api/steps"
+import { getSedentaryStatus } from "@/lib/api/activity-status"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { getCurrentUser } from "@/lib/session"
@@ -10,6 +12,8 @@ import { Shell } from "@/components/layout/shell"
 import { FastingStatus } from "@/components/pages/dashboard/fasting-status"
 import { QuickLogCard } from "@/components/pages/dashboard/quick-log-card"
 import { DailyGoalCard } from "@/components/pages/dashboard/today-intake"
+import { StepUpload } from "@/components/pages/dashboard/step-upload"
+import { SedentaryAlert } from "@/components/pages/dashboard/sedentary-alert"
 import { TodayWorkouts } from "@/components/pages/dashboard/today-workouts"
 import { WaterProgress } from "@/components/pages/dashboard/water-progress"
 import { WeightTracker } from "@/components/pages/dashboard/weight-tracker"
@@ -41,7 +45,7 @@ export default async function Dashboard() {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
   sevenDaysAgo.setHours(0, 0, 0, 0)
 
-  const [todayMeals, dbUser, todayWater, weightLogs, todayWorkouts, weeklyStats, bodyMeasurements, recentWorkoutDates] = await Promise.all([
+  const [todayMeals, dbUser, todayWater, weightLogs, todayWorkouts, weeklyStats, bodyMeasurements, recentWorkoutDates, todaySteps, sedentaryStatus] = await Promise.all([
     getTodayFoodLogs(user.id),
     db.user.findUnique({
       where: { id: user.id },
@@ -86,6 +90,8 @@ export default async function Dashboard() {
       select: { date: true },
       orderBy: { date: "desc" },
     }),
+    getTodayStepCount(user.id, today),
+    getSedentaryStatus(user.id),
   ])
 
   // Protein target (Mifflin-St Jeor body-weight method)
@@ -134,6 +140,8 @@ export default async function Dashboard() {
       {/* Quick log — food / water / workout dialogs */}
       <QuickLogCard />
 
+      <SedentaryAlert initialStatus={sedentaryStatus} />
+
       {/* Today summary — 3 cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <DailyGoalCard
@@ -161,6 +169,7 @@ export default async function Dashboard() {
           waistGoalCm={72}
         />
         <TodayWorkouts workouts={todayWorkouts} />
+        <StepUpload initialSteps={todaySteps} />
       </div>
 
       {/* Weekly snapshot */}

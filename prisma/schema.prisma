@@ -131,6 +131,7 @@ model FoodLog {
   protein         Float?
   carbs           Float?
   fat             Float?
+  fiber           Float?
   aiComment       String?  @map(name: "ai_comment") @db.Text
   createdAt       DateTime @default(now()) @map(name: "created_at")
 

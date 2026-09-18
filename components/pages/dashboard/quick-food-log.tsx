@@ -16,6 +16,7 @@ interface CalorieEstimate {
   protein: number
   carbs: number
   fat: number
+  fiber?: number
   breakdown: Array<{ item: string; calories: number }>
   confidence: "high" | "medium" | "low"
   comment?: string
@@ -56,6 +57,23 @@ function MacroBar({ protein, carbs, fat }: { protein: number; carbs: number; fat
   )
 }
 
+function FiberBadge({ fiber }: { fiber: number }) {
+  const isHighFiber = fiber >= 5
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+        isHighFiber
+          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+          : "bg-muted text-muted-foreground"
+      )}
+      title="Estimated dietary fiber. Aim for fiber-rich foods like oats, chia seeds, wood ear mushroom, and beans."
+    >
+      🌾 {fiber}g fiber
+    </span>
+  )
+}
+
 function CaloriePreviewCard({ estimate }: { estimate: CalorieEstimate }) {
   const conf = CONFIDENCE_CONFIG[estimate.confidence]
   return (
@@ -73,6 +91,7 @@ function CaloriePreviewCard({ estimate }: { estimate: CalorieEstimate }) {
         </span>
       </div>
       <MacroBar protein={estimate.protein} carbs={estimate.carbs} fat={estimate.fat} />
+      {estimate.fiber != null && <FiberBadge fiber={estimate.fiber} />}
       {estimate.comment && (
         <p className="text-xs text-muted-foreground italic border-l-2 border-primary/40 pl-2">{estimate.comment}</p>
       )}
@@ -143,6 +162,7 @@ type RecentMeal = {
   protein: number | null
   carbs: number | null
   fat: number | null
+  fiber: number | null
   aiComment: string | null
 }
 
@@ -233,6 +253,7 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
           protein: meal.protein ?? 0,
           carbs: meal.carbs ?? 0,
           fat: meal.fat ?? 0,
+          fiber: meal.fiber ?? undefined,
           breakdown: [],
           confidence: "medium",
           comment: meal.aiComment ?? undefined,
@@ -244,7 +265,7 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
       }
     }
 
-    async function quickLogMeal(meal: RecentMeal) {
+    async function quickLogMeal(meal: RecentMeal, override = false) {
       if (isLogging || meal.aiCalories == null) return
       setIsLogging(true)
       try {
@@ -256,14 +277,33 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
             foodDescription: meal.foodDescription,
             mealType,
             aiCalories: meal.aiCalories,
-            protein: meal.protein,
-            carbs: meal.carbs,
-            fat: meal.fat,
-            aiComment: meal.aiComment,
+            protein: meal.protein ?? undefined,
+            carbs: meal.carbs ?? undefined,
+            fat: meal.fat ?? undefined,
+            fiber: meal.fiber ?? undefined,
+            aiComment: meal.aiComment ?? undefined,
             date: now.toISOString(),
             localDate: toDateStr(now),
+            localHour: now.getHours(),
+            override,
           }),
         })
+        if (res.status === 409) {
+          const violation = await res.json().catch(() => null) as { message?: string } | null
+          toast({
+            title: "Outside eating window",
+            description: violation?.message ?? "This log is outside your fasting window.",
+            action: (
+              <button
+                className="rounded px-2 py-1 text-xs font-medium underline-offset-2 hover:underline"
+                onClick={() => quickLogMeal(meal, true)}
+              >
+                Log anyway
+              </button>
+            ),
+          })
+          return
+        }
         if (!res.ok) { toast({ title: "Save failed", variant: "destructive" }); return }
         const result = await res.json() as { id: string; aiCalories?: number }
         const kcal = result.aiCalories ?? meal.aiCalories
@@ -309,6 +349,7 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
           protein: data.protein,
           carbs: data.carbs,
           fat: data.fat,
+          fiber: data.fiber,
           breakdown: data.breakdown ?? [],
           confidence: data.confidence,
           comment: data.comment,
@@ -326,11 +367,12 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
     React.useEffect(() => { onCanLogChange?.(canLog) }, [canLog, onCanLogChange])
     React.useEffect(() => { onLoggingChange?.(isLogging) }, [isLogging, onLoggingChange])
 
-    async function handleLog(): Promise<boolean> {
+    async function handleLog(override = false): Promise<boolean> {
       const trimmed = description.trim()
       if (!trimmed || trimmed.length < 3 || isLogging) return false
       setIsLogging(true)
       try {
+        const localHour = logTime ? Number(logTime.split(":")[0]) : new Date().getHours()
         const res = await fetch("/api/food-logs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -341,11 +383,30 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
             protein: estimate?.protein,
             carbs: estimate?.carbs,
             fat: estimate?.fat,
+            fiber: estimate?.fiber,
             aiComment: estimate?.comment,
             date: logDate && logTime ? new Date(`${logDate}T${logTime}`).toISOString() : new Date().toISOString(),
             localDate: logDate || toDateStr(new Date()),
+            localHour,
+            override,
           }),
         })
+        if (res.status === 409) {
+          const violation = await res.json().catch(() => null) as { message?: string } | null
+          toast({
+            title: "Outside eating window",
+            description: violation?.message ?? "This log is outside your fasting window.",
+            action: (
+              <button
+                className="rounded px-2 py-1 text-xs font-medium underline-offset-2 hover:underline"
+                onClick={() => handleLog(true)}
+              >
+                Log anyway
+              </button>
+            ),
+          })
+          return false
+        }
         if (!res.ok) {
           toast({ title: "Save failed", description: "Could not save your meal. Please try again.", variant: "destructive" })
           return false
@@ -576,7 +637,7 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
 
         {!hideButton && (
           <div className="flex justify-end">
-            <Button onClick={handleLog} disabled={!canLog} size="sm">
+            <Button onClick={() => handleLog()} disabled={!canLog} size="sm">
               {isLogging
                 ? <><Icons.spinner className="mr-2 h-4 w-4 animate-spin" />Logging…</>
                 : <><Icons.add className="mr-2 h-4 w-4" />Log meal</>

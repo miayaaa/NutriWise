@@ -5,6 +5,7 @@ export interface CalorieEstimate {
   protein: number
   carbs: number
   fat: number
+  fiber: number
   breakdown: Array<{ item: string; calories: number }>
   confidence: "high" | "medium" | "low"
   comment?: string
@@ -29,10 +30,11 @@ export async function estimateCalories(
           content: `Estimate nutrition for: "${foodDescription}"
 
 Respond ONLY with valid JSON (no markdown):
-{"calories":<int>,"protein":<int>,"carbs":<int>,"fat":<int>,"breakdown":[{"item":"<name>","calories":<int>}],"confidence":"<high|medium|low>","comment":"<exactly 1 concise English coaching sentence with encouragement + one practical next step, max 20 words>"}}
+{"calories":<int>,"protein":<int>,"carbs":<int>,"fat":<int>,"fiber":<number, grams, 1 decimal>,"breakdown":[{"item":"<name>","calories":<int>}],"confidence":"<high|medium|low>","comment":"<exactly 1 concise English coaching sentence with encouragement + one practical next step, max 20 words>"}}
 
 Rules:
 - Keep calories/macros realistic and internally consistent.
+- fiber: estimate total dietary fiber in grams. Foods high in water-soluble fiber (oats, chia seeds, wood ear mushroom, beans, apples) should reflect that; low-fiber foods (meat, eggs, refined grains) should be near 0.
 - Comment tone: professional, warm, actionable.
 - Do not use warnings unless strongly necessary.
 - No extra keys.`,

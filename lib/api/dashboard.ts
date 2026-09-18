@@ -22,7 +22,7 @@ export async function getTodayFoodLogs(userId: string) {
         userId,
         date: { gte: todayStart, lte: todayEnd },
       },
-      select: { id: true, foodDescription: true, aiCalories: true, protein: true, carbs: true, fat: true, mealType: true, date: true },
+      select: { id: true, foodDescription: true, aiCalories: true, protein: true, carbs: true, fat: true, fiber: true, mealType: true, date: true },
       orderBy: { date: "asc" },
     }),
     db.activityLog.findMany({
@@ -41,6 +41,7 @@ export async function getTodayFoodLogs(userId: string) {
     protein: null,
     carbs: null,
     fat: null,
+    fiber: null,
     mealType: "SNACK" as const,
   }))
 

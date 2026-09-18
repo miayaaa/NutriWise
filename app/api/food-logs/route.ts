@@ -11,9 +11,15 @@ const bodySchema = z.object({
   protein: z.number().min(0).optional(),
   carbs: z.number().min(0).optional(),
   fat: z.number().min(0).optional(),
+  fiber: z.number().min(0).optional(),
   aiComment: z.string().max(200).optional(),
   date: z.string().optional(),
   localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  // Current local hour (0-23) at the client — needed to check the fasting
+  // window server-side. Omit to skip the fasting check (e.g. manual backfill).
+  localHour: z.number().int().min(0).max(23).optional(),
+  // Confirms the user wants to log outside their fasting window anyway.
+  override: z.boolean().optional(),
 })
 
 export async function POST(req: Request) {
@@ -26,6 +32,30 @@ export async function POST(req: Request) {
     const json = await req.json()
     const body = bodySchema.parse(json)
 
+    if (body.localHour != null && !body.override) {
+      const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { fastingEnabled: true, fastingStart: true, fastingEnd: true },
+      })
+
+      if (user?.fastingEnabled) {
+        const { fastingStart, fastingEnd } = user
+        const inWindow = fastingEnd > fastingStart
+          ? body.localHour >= fastingStart && body.localHour < fastingEnd
+          : body.localHour >= fastingStart || body.localHour < fastingEnd
+
+        if (!inWindow) {
+          return Response.json(
+            {
+              error: "fasting_violation",
+              message: `This is outside your eating window (${fastingStart}:00–${fastingEnd}:00). Log anyway?`,
+            },
+            { status: 409 }
+          )
+        }
+      }
+    }
+
     const log = await db.foodLog.create({
       data: {
         userId: session.user.id,
@@ -35,6 +65,7 @@ export async function POST(req: Request) {
         protein: body.protein,
         carbs: body.carbs,
         fat: body.fat,
+        fiber: body.fiber,
         aiComment: body.aiComment,
         date: body.date ? new Date(body.date) : new Date(),
         localDate: body.localDate,

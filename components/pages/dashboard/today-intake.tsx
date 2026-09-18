@@ -12,6 +12,7 @@ interface TodayMeal {
   protein: number | null
   carbs: number | null
   fat: number | null
+  fiber: number | null
   mealType: MealType
   date: string
 }
@@ -34,6 +35,10 @@ const MEAL_META: Record<MealType, { label: string; emoji: string }> = {
 }
 
 const MEAL_ORDER: MealType[] = ["BREAKFAST", "LUNCH", "DINNER", "SNACK"]
+
+// General dietary fiber guideline (~25-30g/day) — not user-configurable like the
+// protein/carb/fat targets, which are derived from the user's weight and goal.
+const FIBER_TARGET_G = 25
 
 type GoalStatus = "ok" | "warn" | "danger" | "empty"
 
@@ -148,6 +153,30 @@ function MacroBar({
   )
 }
 
+function FiberRow({ value }: { value: number }) {
+  const pct = Math.min((value / FIBER_TARGET_G) * 100, 100)
+  const met = value >= FIBER_TARGET_G
+  return (
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between text-xs">
+        <span className="text-muted-foreground">🌾 Fiber</span>
+        <span>
+          <span className={cn("font-semibold tabular-nums", met ? "text-emerald-600 dark:text-emerald-400" : "text-emerald-500/80")}>
+            {Math.round(value * 10) / 10}g
+          </span>
+          <span className="text-muted-foreground"> / {FIBER_TARGET_G}g</span>
+        </span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-emerald-500 transition-all"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
 export function DailyGoalCard({
   meals,
   dailyCalorieGoal,
@@ -161,6 +190,7 @@ export function DailyGoalCard({
   const totalProtein = meals.reduce((s, m) => s + (m.protein   ?? 0), 0)
   const totalCarbs   = meals.reduce((s, m) => s + (m.carbs     ?? 0), 0)
   const totalFat     = meals.reduce((s, m) => s + (m.fat       ?? 0), 0)
+  const totalFiber   = meals.reduce((s, m) => s + (m.fiber     ?? 0), 0)
 
   const goal = dailyCalorieGoal ?? 0
   const goalPct = goal > 0 ? (totalKcal / goal) * 100 : 0
@@ -305,6 +335,9 @@ export function DailyGoalCard({
             proteinTarget={proteinTargetG} carbTarget={carbTargetG} fatTarget={fatTargetG}
           />
         )}
+
+        {/* ── Fiber ── */}
+        {totalFiber > 0 && <FiberRow value={totalFiber} />}
 
         {/* ── Meal list ── */}
         {meals.length === 0 ? (
