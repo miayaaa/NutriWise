@@ -9,6 +9,7 @@ import {
 import { BiCalendar, BiHistory } from "react-icons/bi"
 import {
   BsActivity,
+  BsCamera,
   BsCheck2,
   BsChevronDown,
   BsChevronLeft,
@@ -61,6 +62,7 @@ const icons = {
   warning: AiOutlineWarning,
   add: AiOutlinePlus,
   history: BiHistory,
+  camera: BsCamera,
   coach: LuBrainCircuit,
   signout: MdOutlineLogout,
   calendar: BiCalendar,

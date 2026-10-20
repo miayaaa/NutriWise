@@ -1,10 +1,14 @@
 import { Metadata } from "next"
+import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { getFoodHistory } from "@/lib/api/history"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { getCurrentUser } from "@/lib/session"
+import { cn } from "@/lib/utils"
+import { buttonVariants } from "@/components/ui/button"
+import { Icons } from "@/components/icons"
 import { Shell } from "@/components/layout/shell"
 import { DashboardHeader } from "@/components/pages/dashboard/dashboard-header"
 import { FoodHistoryView } from "@/components/pages/dashboard/food-history-view"
@@ -35,7 +39,12 @@ export default async function HistoryPage() {
 
   return (
     <Shell className="w-full px-4 md:px-0">
-      <DashboardHeader heading="History" text="Your workouts and meals." />
+      <DashboardHeader heading="History" text="Your workouts and meals.">
+        <Link href="/dashboard/progress" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "self-start md:self-auto")}>
+          <Icons.camera className="mr-2 h-4 w-4" />
+          Progress photos
+        </Link>
+      </DashboardHeader>
 
       <TodayWorkouts workouts={todayWorkouts} />
 

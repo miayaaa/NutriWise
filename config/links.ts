@@ -35,5 +35,12 @@ export const dashboardLinks: Navigation = {
       href: "/dashboard/settings",
       icon: "settings",
     },
+    // Desktop nav only — the mobile bottom nav uses indices 0–3; mobile reaches
+    // Progress from the History page.
+    {
+      title: "Progress",
+      href: "/dashboard/progress",
+      icon: "camera",
+    },
   ],
 }

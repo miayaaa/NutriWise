@@ -3,6 +3,7 @@ import * as z from "zod"
 
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { isInEatingWindow } from "@/lib/fasting"
 
 const bodySchema = z.object({
   foodDescription: z.string().min(1).max(2000),
@@ -40,11 +41,7 @@ export async function POST(req: Request) {
 
       if (user?.fastingEnabled) {
         const { fastingStart, fastingEnd } = user
-        const inWindow = fastingEnd > fastingStart
-          ? body.localHour >= fastingStart && body.localHour < fastingEnd
-          : body.localHour >= fastingStart || body.localHour < fastingEnd
-
-        if (!inWindow) {
+        if (!isInEatingWindow(body.localHour, fastingStart, fastingEnd)) {
           return Response.json(
             {
               error: "fasting_violation",

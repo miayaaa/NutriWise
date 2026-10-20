@@ -16,7 +16,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer"
-import { QuickFoodLog } from "@/components/pages/dashboard/quick-food-log"
+import { FoodLogSheet } from "@/components/pages/dashboard/food-log-sheet"
 import { WaterQuickLog } from "@/components/pages/dashboard/water-quick-log"
 type LogType = "food" | "water" | "workout"
 
@@ -31,7 +31,13 @@ const LOG_OPTIONS: { type: LogType; label: string; icon: React.ReactNode; color:
 const NAV_LEFT  = [dashboardLinks.data[0], dashboardLinks.data[1]]  // Dashboard, History
 const NAV_RIGHT = [dashboardLinks.data[2], dashboardLinks.data[3]]  // Coach, Settings
 
-export function MobileBottomNav() {
+interface MobileBottomNavProps {
+  fastingEnabled?: boolean
+  fastingStart?: number
+  fastingEnd?: number
+}
+
+export function MobileBottomNav({ fastingEnabled, fastingStart, fastingEnd }: MobileBottomNavProps) {
   const path = usePathname()
   const router = useRouter()
   const [menuOpen, setMenuOpen] = React.useState(false)
@@ -115,17 +121,13 @@ export function MobileBottomNav() {
         </>
       )}
 
-      {/* Food drawer */}
-      <Drawer open={logType === "food"} onOpenChange={(o) => { if (!o) setLogType(null) }}>
-        <DrawerContent className="max-h-[90dvh]">
-          <DrawerHeader>
-            <DrawerTitle>Log Food</DrawerTitle>
-          </DrawerHeader>
-          <div className="overflow-y-auto px-4 pb-8">
-            <QuickFoodLog onSuccess={() => setLogType(null)} />
-          </div>
-        </DrawerContent>
-      </Drawer>
+      <FoodLogSheet
+        open={logType === "food"}
+        onOpenChange={(o) => { if (!o) setLogType(null) }}
+        fastingEnabled={fastingEnabled}
+        fastingStart={fastingStart}
+        fastingEnd={fastingEnd}
+      />
 
       {/* Water — quick add bottom sheet */}
       <Drawer open={logType === "water"} onOpenChange={(o) => { if (!o) setLogType(null) }}>

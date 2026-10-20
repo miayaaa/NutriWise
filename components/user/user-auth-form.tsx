@@ -94,7 +94,11 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
           const key = "nutriwise_guest_id"
           let guestId = localStorage.getItem(key)
           if (!guestId) {
-            guestId = crypto.randomUUID().replace(/-/g, "")
+            // getRandomValues (not randomUUID) — randomUUID only exists in secure
+            // contexts, so it throws when testing on a phone via http://<LAN IP>.
+            guestId = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) =>
+              b.toString(16).padStart(2, "0")
+            ).join("")
             localStorage.setItem(key, guestId)
           }
           signIn("guest", { callbackUrl: getCallbackUrl(), guestId })

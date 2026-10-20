@@ -135,15 +135,55 @@ function CalorieSkeletonCard() {
 const pad = (n: number) => String(n).padStart(2, "0")
 function toDateStr(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
 function toTimeStr(d: Date) { return `${pad(d.getHours())}:${pad(d.getMinutes())}` }
-function formatLoggedAt(date: string, time: string): string {
-  if (!date || !time) return "Now"
-  const d = new Date(`${date}T${time}`)
+function formatLogDay(date: string): string {
+  if (!date) return "Today"
   const now = new Date()
   const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1)
-  const t = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
-  if (d.toDateString() === now.toDateString()) return `Today, ${t}`
-  if (d.toDateString() === yesterday.toDateString()) return `Yesterday, ${t}`
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + `, ${t}`
+  if (date === toDateStr(now)) return "Today"
+  if (date === toDateStr(yesterday)) return "Yesterday"
+  return new Date(`${date}T12:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+}
+function formatLogTime(time: string): string {
+  if (!time) return "Now"
+  return new Date(`2000-01-01T${time}`).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+}
+// Within 5 minutes of the current time counts as "now" (no reset button needed).
+function isNow(date: string, time: string): boolean {
+  if (!date || !time) return true
+  return Math.abs(Date.now() - new Date(`${date}T${time}`).getTime()) < 5 * 60 * 1000
+}
+
+interface PickerChipProps {
+  type: "date" | "time"
+  value: string
+  max?: string
+  disabled?: boolean
+  label: string
+  onChange: (value: string) => void
+  children: React.ReactNode
+}
+
+// A chip that IS the native input (transparent, stretched over the label):
+// tapping anywhere opens the OS picker. text-base keeps iOS from zooming on focus.
+function PickerChip({ type, value, max, disabled, label, onChange, children }: PickerChipProps) {
+  return (
+    <label className="relative inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-input bg-background px-3 text-sm text-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring">
+      {children}
+      <Icons.down className="h-3 w-3 shrink-0 text-muted-foreground" />
+      <input
+        type={type}
+        value={value}
+        max={max}
+        disabled={disabled}
+        aria-label={label}
+        // iOS "Reset" in the wheel clears the value — ignore empties.
+        onChange={(e) => { if (e.target.value) onChange(e.target.value) }}
+        // Desktop Chrome/Safari only open the picker from the icon; open it from anywhere.
+        onClick={(e) => { try { e.currentTarget.showPicker?.() } catch { /* unsupported */ } }}
+        className="absolute inset-0 h-full w-full cursor-pointer appearance-none text-base opacity-0"
+      />
+    </label>
+  )
 }
 
 export type QuickFoodLogHandle = { triggerLog: () => Promise<boolean> }
@@ -185,7 +225,6 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
     const [isLogging, setIsLogging] = React.useState(false)
     const [logDate, setLogDate] = React.useState("")
     const [logTime, setLogTime] = React.useState("")
-    const [showTimePicker, setShowTimePicker] = React.useState(false)
     const [recentMeals, setRecentMeals] = React.useState<RecentMeal[]>([])
     const [photoStatus, setPhotoStatus] = React.useState<"idle" | "scanning" | "done" | "failed">("idle")
     const photoInputRef = React.useRef<HTMLInputElement>(null)
@@ -434,7 +473,6 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
         const now = new Date()
         setLogDate(toDateStr(now))
         setLogTime(toTimeStr(now))
-        setShowTimePicker(false)
         router.refresh()
         onSuccess?.()
         return true
@@ -472,100 +510,8 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
           </div>
         )}
 
-        {/* Meal type */}
-        <div className="flex flex-wrap gap-2">
-          {MEAL_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              disabled={isLogging}
-              onClick={() => setMealType(opt.value)}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-                mealType === opt.value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >
-              <span>{opt.emoji}</span><span>{opt.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Time picker */}
-        <div className="space-y-2">
-          <button
-            type="button"
-            disabled={isLogging}
-            onClick={() => setShowTimePicker((v) => !v)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          >
-            <Icons.calendar className="h-3.5 w-3.5 shrink-0" />
-            <span suppressHydrationWarning>{formatLoggedAt(logDate, logTime)}</span>
-            <span className="text-muted-foreground/40">· tap to change</span>
-          </button>
-
-          {showTimePicker && (
-            <div className="space-y-2">
-              <div className="flex justify-end">
-                <Button type="button" variant="ghost" size="sm" disabled={isLogging}
-                  onClick={() => { const now = new Date(); setLogDate(toDateStr(now)); setLogTime(toTimeStr(now)) }}>
-                  Use now
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Date</p>
-                  <input type="date" value={logDate} max={toDateStr(new Date())}
-                    onChange={(e) => setLogDate(e.target.value)}
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Time</p>
-                  <input type="time" value={logTime}
-                    onChange={(e) => setLogTime(e.target.value)}
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground" />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Recent meals */}
-        {recentMeals.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-xs text-muted-foreground">Recent</p>
-            <div className="flex flex-wrap gap-1.5">
-              {recentMeals.map((meal, i) => (
-                <div key={i} className="flex items-center rounded-full border border-border bg-muted/50 overflow-hidden">
-                  <button
-                    type="button"
-                    disabled={isLogging}
-                    onClick={() => applyRecentMeal(meal)}
-                    className="max-w-[180px] truncate px-3 py-1 text-xs text-foreground/70 hover:text-foreground transition-colors"
-                    title={meal.foodDescription ?? ""}
-                  >
-                    {meal.aiCalories != null && (
-                      <span className="mr-1.5 font-medium tabular-nums text-foreground/50">{Math.round(meal.aiCalories)}</span>
-                    )}
-                    {meal.foodDescription}
-                  </button>
-                  {meal.aiCalories != null && (
-                    <button
-                      type="button"
-                      disabled={isLogging}
-                      onClick={() => quickLogMeal(meal)}
-                      className="border-l border-border px-2 py-1 text-xs text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
-                      title="Log now"
-                    >
-                      +
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Food input + AI estimate button in one row */}
+        {/* Food input first: on mobile it sits at the top of the sheet, so it stays
+            visible above the keyboard while the estimate appears right below it. */}
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-medium">What did you eat?</span>
@@ -668,8 +614,91 @@ export const QuickFoodLog = React.forwardRef<QuickFoodLogHandle, QuickFoodLogPro
           </p>
         </div>
 
+        {/* Meal type */}
+        <div className="flex flex-wrap gap-2">
+          {MEAL_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              disabled={isLogging}
+              onClick={() => setMealType(opt.value)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+                mealType === opt.value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              <span>{opt.emoji}</span><span>{opt.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* When — date and time are native inputs layered over chips, so one tap
+            opens the OS picker (iOS wheel) directly; no hidden panel to reveal. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <PickerChip
+            type="date"
+            value={logDate}
+            max={toDateStr(new Date())}
+            disabled={isLogging}
+            onChange={setLogDate}
+            label="Meal date"
+          >
+            <Icons.calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span suppressHydrationWarning>{formatLogDay(logDate)}</span>
+          </PickerChip>
+          <PickerChip type="time" value={logTime} disabled={isLogging} onChange={setLogTime} label="Meal time">
+            <span suppressHydrationWarning>{formatLogTime(logTime)}</span>
+          </PickerChip>
+          {!isNow(logDate, logTime) && (
+            <button
+              type="button"
+              disabled={isLogging}
+              onClick={() => { const now = new Date(); setLogDate(toDateStr(now)); setLogTime(toTimeStr(now)) }}
+              className="h-9 cursor-pointer px-2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Use now
+            </button>
+          )}
+        </div>
+
         {aiStatus === "fetching" && <CalorieSkeletonCard />}
         {aiStatus === "done" && estimate && <CaloriePreviewCard estimate={estimate} />}
+
+        {/* Recent meals */}
+        {recentMeals.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground">Recent</p>
+            <div className="flex flex-wrap gap-1.5">
+              {recentMeals.map((meal, i) => (
+                <div key={i} className="flex items-center rounded-full border border-border bg-muted/50 overflow-hidden">
+                  <button
+                    type="button"
+                    disabled={isLogging}
+                    onClick={() => applyRecentMeal(meal)}
+                    className="max-w-[180px] truncate px-3 py-1 text-xs text-foreground/70 hover:text-foreground transition-colors"
+                    title={meal.foodDescription ?? ""}
+                  >
+                    {meal.aiCalories != null && (
+                      <span className="mr-1.5 font-medium tabular-nums text-foreground/50">{Math.round(meal.aiCalories)}</span>
+                    )}
+                    {meal.foodDescription}
+                  </button>
+                  {meal.aiCalories != null && (
+                    <button
+                      type="button"
+                      disabled={isLogging}
+                      onClick={() => quickLogMeal(meal)}
+                      className="border-l border-border px-2 py-1 text-xs text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                      title="Log now"
+                    >
+                      +
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {!hideButton && (
           <div className="flex justify-end">

@@ -19,6 +19,11 @@
 | `lib/ai/calories.ts` | Food estimation prompt |
 | `lib/ai/workout.ts` | Post-workout comment generation |
 | `lib/api/coach-insights.ts` | DB queries: aggregate metrics for insights |
+| `lib/ai/coach-context.ts` | `buildSystemPrompt()` — shared by chat and the MCP `get_today_summary` tool |
+| `lib/mcp/server.ts` | MCP tools for the Claude app connector (`/api/mcp`); every query scoped to the token's userId |
+| `lib/storage/photos.ts` | Progress photos: private Vercel Blob (prod) / `.uploads/` (dev); always served via auth-checked `/api/progress-photos/[id]` |
+| `components/pages/dashboard/food-log-sheet.tsx` | The single Log Food screen (dashboard card + mobile FAB): full-screen on mobile with Log in the header (no bottom-anchored UI for the iOS keyboard to cover), centered dialog on desktop |
+| `lib/mcp/oauth.ts` | OAuth 2.1 (PKCE, DCR) backing the connector — see `docs/life-assistant-setup.md` |
 
 ## AI Coaching Behaviour
 
@@ -57,6 +62,7 @@ BodyMeasurement   → waistCm, hipCm, feelScore, notes, date
 WorkoutTemplate   → name, description, exercises (JSON), cycleDay (1-4 periodisation)
 CoachInsight      → rangeType (7d/30d/90d), summary, coachComment, actionItems[], score, cached 12h
 Activity          → custom activities (hobbies, habits) with optional food tracking
+ProgressPhoto     → angle (front/side/back/other), localDate, private blob pathname
 ```
 
 ## Common Patterns

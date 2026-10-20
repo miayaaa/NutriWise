@@ -1,4 +1,5 @@
 import { dashboardLinks } from "@/config/links"
+import { db } from "@/lib/db"
 import { getCurrentUser } from "@/lib/session"
 import Footer from "@/components/layout/footer"
 import Navbar from "@/components/layout/navbar"
@@ -13,6 +14,14 @@ export default async function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
   const user = await getCurrentUser()
+  // So the mobile FAB's food sheet shows the same proactive fasting-window
+  // warning as the dashboard card.
+  const fasting = user
+    ? await db.user.findUnique({
+        where: { id: user.id },
+        select: { fastingEnabled: true, fastingStart: true, fastingEnd: true },
+      })
+    : null
 
   return (
     <div className="flex min-h-screen w-full flex-col space-y-3 overflow-x-hidden md:space-y-6">
@@ -32,7 +41,11 @@ export default async function DashboardLayout({
       <div className="hidden md:block">
         <Footer />
       </div>
-      <MobileBottomNav />
+      <MobileBottomNav
+        fastingEnabled={fasting?.fastingEnabled}
+        fastingStart={fasting?.fastingStart}
+        fastingEnd={fasting?.fastingEnd}
+      />
     </div>
   )
 }

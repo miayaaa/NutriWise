@@ -67,6 +67,9 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  // Android Chrome: shrink the layout when the keyboard opens so bottom sheets
+  // and fixed bars stay above it (iOS ignores this; vaul handles iOS).
+  interactiveWidget: "resizes-content",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "white" },
     { media: "(prefers-color-scheme: dark)", color: "black" },

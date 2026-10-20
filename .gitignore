@@ -41,3 +41,6 @@ prisma/generated/
 # extra
 /private_docs
 .vercel
+
+# local progress-photo storage (dev only)
+/.uploads/

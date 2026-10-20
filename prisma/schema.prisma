@@ -71,6 +71,9 @@ model User {
   coachInsights    CoachInsight[]
   bodyMeasurements BodyMeasurement[]
   workoutTemplates WorkoutTemplate[]
+  oauthCodes       OAuthCode[]
+  oauthTokens      OAuthToken[]
+  progressPhotos   ProgressPhoto[]
 
   @@map(name: "users")
 }
@@ -200,6 +203,22 @@ model WorkoutTemplate {
   @@map(name: "workout_templates")
 }
 
+model ProgressPhoto {
+  id          String   @id @default(cuid())
+  userId      String   @map(name: "user_id")
+  pathname    String   @unique // private Vercel Blob pathname (or .uploads/ file locally)
+  angle       String   // front | side | back | other
+  localDate   String   @map(name: "local_date") // YYYY-MM-DD the photo was taken
+  contentType String   @map(name: "content_type")
+  sizeBytes   Int      @map(name: "size_bytes")
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now()) @map(name: "created_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, localDate])
+  @@map(name: "progress_photos")
+}
+
 model CoachInsight {
   id           String   @id @default(cuid())
   userId       String   @map(name: "user_id")
@@ -216,4 +235,52 @@ model CoachInsight {
 
   @@unique([userId, rangeType, startDate, endDate])
   @@map(name: "coach_insights")
+}
+
+// ── OAuth 2.1 for the MCP connector (Claude app → /api/mcp) ──────────────
+// Clients self-register via RFC 7591 dynamic client registration.
+// Codes and tokens are stored as SHA-256 hashes, never in plaintext.
+
+model OAuthClient {
+  id           String   @id @default(cuid())
+  clientName   String?  @map(name: "client_name")
+  redirectUris String[] @map(name: "redirect_uris")
+  createdAt    DateTime @default(now()) @map(name: "created_at")
+
+  codes  OAuthCode[]
+  tokens OAuthToken[]
+
+  @@map(name: "oauth_clients")
+}
+
+model OAuthCode {
+  codeHash      String   @id @map(name: "code_hash")
+  clientId      String   @map(name: "client_id")
+  userId        String   @map(name: "user_id")
+  redirectUri   String   @map(name: "redirect_uri")
+  codeChallenge String   @map(name: "code_challenge")
+  resource      String?
+  expiresAt     DateTime @map(name: "expires_at")
+
+  client OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map(name: "oauth_codes")
+}
+
+model OAuthToken {
+  id               String   @id @default(cuid())
+  accessTokenHash  String   @unique @map(name: "access_token_hash")
+  refreshTokenHash String   @unique @map(name: "refresh_token_hash")
+  clientId         String   @map(name: "client_id")
+  userId           String   @map(name: "user_id")
+  accessExpiresAt  DateTime @map(name: "access_expires_at")
+  refreshExpiresAt DateTime @map(name: "refresh_expires_at")
+  createdAt        DateTime @default(now()) @map(name: "created_at")
+
+  client OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map(name: "oauth_tokens")
 }
